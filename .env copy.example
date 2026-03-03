@@ -1,0 +1,13 @@
+# PostgreSQL (ローカルまたは Railway 等)
+DATABASE_URL=postgresql://user:password@localhost:5432/ai_agent
+# または個別指定
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=ai_agent
+# DB_USER=postgres
+# DB_PASSWORD=postgres
+# DATABASE_SSL=false
+
+# OpenAI（ストリーミングチャット・ツール実行用）
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
