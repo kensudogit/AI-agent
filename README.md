@@ -15,6 +15,13 @@ Next.js + TypeScript + React + PostgreSQL による、**音声会話・テキス
 - **音声入力**: マイクボタンで話すとテキストに変換され送信
 - **ツール実行**: 時刻取得・計算などエージェントがアクションを実行
 - **会話の永続化**: PostgreSQL に会話とメッセージを保存（任意）
+- **模擬商談（高度）**: `/negotiation` で以下を利用可能。
+  - **難易度**: 易・標準・難（AIの態度が協力的〜厳しめに変化）
+  - **音声入力**: マイクで発話して送信
+  - **経過タイマー**: 商談時間を表示
+  - **構造化フィードバック**: 終了時に良かった点・改善点・アドバイス・総合評価（★1〜5）を表示
+  - **セッション保存**: PostgreSQL に会話ログとフィードバックを保存
+  - **履歴**: 過去セッション一覧・詳細（会話ログ＋フィードバック）の閲覧
 
 ## セットアップ
 
@@ -46,7 +53,7 @@ PostgreSQL を起動した状態で:
 npm run db:init
 ```
 
-`src/lib/schema.sql` の内容でテーブル（conversations, messages）が作成されます。
+`src/lib/schema.sql` の内容でテーブル（conversations, messages, negotiation_sessions, negotiation_messages）が作成されます。既存環境で模擬商談の履歴保存を使う場合は、再度 `npm run db:init` を実行してください。
 
 ### 4. 開発サーバー起動
 
@@ -54,7 +61,37 @@ npm run db:init
 npm run dev
 ```
 
-ブラウザで http://localhost:3000 を開きます。
+ブラウザで http://localhost:3001 を開きます。
+
+## Docker で動かす
+
+PostgreSQL とアプリをまとめて起動します。
+
+### 前提
+
+- Docker と Docker Compose がインストールされていること
+- `.env` に `OPENAI_API_KEY` を設定（チャット・模擬商談で利用）。`.env` がない場合は `copy .env.example .env` で作成してから編集する。Compose で「.env が無い」と出る場合は、空の `.env` を作成するか、`docker-compose.yml` の `env_file: - .env` を削除する。
+
+### 起動
+
+```bash
+cd C:\devlop\AI-agent
+docker compose up --build
+```
+
+- **本番アプリ（フロント＋API）**: http://localhost:3001
+- **開発用フロント（ホットリロード）**: http://localhost:3002
+- PostgreSQL: ホストの 5432（コンテナ内のみで使う場合は `docker-compose.yml` の `ports` を削除可）
+
+起動時にアプリ側で PostgreSQL の起動を待ち、`src/lib/schema.sql` でテーブルを自動作成します。`app` が本番用、`frontend` が開発用（コード変更が即反映）です。
+
+### 停止
+
+```bash
+docker compose down
+```
+
+データを消す場合: `docker compose down -v`
 
 ## 本番ビルド
 
@@ -63,21 +100,31 @@ npm run build
 npm start
 ```
 
+## Docker 関連ファイル
+
+- `Dockerfile` … Next.js のマルチステージビルド（standalone）
+- `docker-compose.yml` … アプリ + PostgreSQL
+- `scripts/docker-entrypoint.sh` … 起動時に DB 待ち・スキーマ初期化後に `next start` を実行
+- `scripts/docker-init-db.mjs` … `schema.sql` を PostgreSQL に流し込む（Docker 用）
+
 ## プロジェクト構成（抜粋）
 
 ```
 src/
   app/
-    page.tsx          # チャットUI（音声・テキスト）
+    page.tsx              # チャットUI（音声・テキスト）
+    negotiation/page.tsx  # 模擬商談UI（シナリオ・役割・チャット・フィードバック）
     api/
-      chat/route.ts   # ストリーミングチャット + ツール実行
-      conversations/  # 会話一覧・作成・メッセージ取得
+      chat/route.ts       # ストリーミングチャット + ツール実行
+      conversations/     # 会話一覧・作成・メッセージ取得
+      negotiation/       # 模擬商談チャット・フィードバックAPI
   lib/
-    db.ts             # PostgreSQL 接続
-    schema.sql        # テーブル定義
-    tools.ts          # エージェント用ツール定義・実行
+    db.ts                 # PostgreSQL 接続
+    schema.sql            # テーブル定義
+    tools.ts              # エージェント用ツール定義・実行
+    negotiation.ts        # 模擬商談シナリオ・システムプロンプト定義
   types/
-    agent.ts          # メッセージ・会話の型
+    agent.ts              # メッセージ・会話の型
 ```
 
 ## カスタムツールの追加

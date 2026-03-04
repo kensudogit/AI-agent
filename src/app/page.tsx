@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 
 type Message = { role: 'user' | 'assistant'; content: string; tool?: string };
 
@@ -150,9 +151,17 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen max-w-3xl mx-auto">
-      <header className="p-4 border-b border-slate-200 dark:border-slate-700">
-        <h1 className="text-xl font-semibold">AI Agent</h1>
-        <p className="text-sm text-slate-500">音声・テキストで会話し、アクションを実行できます</p>
+      <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">AI Agent</h1>
+          <p className="text-sm text-slate-500">音声・テキストで会話し、アクションを実行できます</p>
+        </div>
+        <Link
+          href="/negotiation"
+          className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+        >
+          模擬商談 →
+        </Link>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

@@ -7,10 +7,19 @@ node_modules
 .next
 out
 
-# env
+# env（APIキー・DB接続など。Git に上げない）
 .env
 .env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
 .env.*.local
+.env copy*
+.env.copy*
+*.env
 
 # debug
 npm-debug.log*
