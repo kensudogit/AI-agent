@@ -93,6 +93,11 @@ docker compose down
 
 データを消す場合: `docker compose down -v`
 
+## Railway にデプロイする（完全公開モード）
+
+**完全公開モード**（誰でも URL でアクセス可能）でデプロイする手順は **[RAILWAY_DEPLOY.md](./RAILWAY_DEPLOY.md)** を参照してください。  
+1) GitHub からデプロイ → 2) **Generate Domain** で公開 URL を発行 → 3) **OPENAI_API_KEY** を Variables に設定、で利用可能になります。
+
 ## 本番ビルド
 
 ```bash

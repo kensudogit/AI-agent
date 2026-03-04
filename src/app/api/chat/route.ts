@@ -38,12 +38,22 @@ export async function POST(req: NextRequest) {
       return obj as unknown as OpenAI.Chat.ChatCompletionMessageParam;
     });
 
-    const stream = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: openaiMessages,
-      stream: true,
-      tools: AGENT_TOOLS.length > 0 ? AGENT_TOOLS : undefined,
-    });
+    let stream: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    try {
+      stream = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: openaiMessages,
+        stream: true,
+        tools: AGENT_TOOLS.length > 0 ? AGENT_TOOLS : undefined,
+      });
+    } catch (apiErr: unknown) {
+      const status = (apiErr as { status?: number })?.status;
+      const code = status === 401 ? 401 : status === 429 ? 429 : 502;
+      return NextResponse.json(
+        { error: apiErr instanceof Error ? apiErr.message : 'OpenAI API error' },
+        { status: code }
+      );
+    }
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
@@ -52,6 +62,7 @@ export async function POST(req: NextRequest) {
         let toolCalls: { id: string; name: string; args: string }[] = [];
         let currentTool = { id: '', name: '', args: '' };
 
+        try {
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta;
           if (!delta) continue;
@@ -105,6 +116,12 @@ export async function POST(req: NextRequest) {
           } catch {
             // ignore persistence errors
           }
+        }
+        } catch (streamErr) {
+          console.error('Chat stream error:', streamErr);
+          controller.enqueue(
+            encoder.encode(`e${JSON.stringify({ error: streamErr instanceof Error ? streamErr.message : 'Stream error' })}\n`)
+          );
         }
         controller.close();
       },

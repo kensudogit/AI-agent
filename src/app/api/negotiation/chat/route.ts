@@ -44,21 +44,38 @@ export async function POST(req: NextRequest) {
       })),
     ];
 
-    const stream = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: openaiMessages,
-      stream: true,
-      temperature: 0.8,
-    });
+    let stream: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    try {
+      stream = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: openaiMessages,
+        stream: true,
+        temperature: 0.8,
+      });
+    } catch (apiErr: unknown) {
+      const status = (apiErr as { status?: number })?.status;
+      const code = status === 401 ? 401 : status === 429 ? 429 : 502;
+      return NextResponse.json(
+        { error: apiErr instanceof Error ? apiErr.message : 'OpenAI API error' },
+        { status: code }
+      );
+    }
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta?.content;
-          if (delta) {
-            controller.enqueue(encoder.encode(`0${JSON.stringify({ content: delta })}\n`));
+        try {
+          for await (const chunk of stream) {
+            const delta = chunk.choices[0]?.delta?.content;
+            if (delta) {
+              controller.enqueue(encoder.encode(`0${JSON.stringify({ content: delta })}\n`));
+            }
           }
+        } catch (streamErr) {
+          console.error('Negotiation stream error:', streamErr);
+          controller.enqueue(
+            encoder.encode(`e${JSON.stringify({ error: streamErr instanceof Error ? streamErr.message : 'Stream error' })}\n`)
+          );
         }
         controller.close();
       },
