@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import UsageInstructionsModal from '@/components/UsageInstructionsModal';
 
 type Message = { role: 'user' | 'assistant'; content: string; tool?: string };
 
@@ -11,6 +12,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [usageModalOpen, setUsageModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -156,13 +158,27 @@ export default function Home() {
           <h1 className="text-xl font-semibold">AI Agent</h1>
           <p className="text-sm text-slate-500">音声・テキストで会話し、アクションを実行できます</p>
         </div>
-        <Link
-          href="/negotiation"
-          className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
-        >
-          模擬商談 →
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setUsageModalOpen(true)}
+            className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z" />
+            </svg>
+            利用手順
+          </button>
+          <Link
+            href="/negotiation"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            模擬商談 →
+          </Link>
+        </div>
       </header>
+
+      <UsageInstructionsModal open={usageModalOpen} onClose={() => setUsageModalOpen(false)} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
