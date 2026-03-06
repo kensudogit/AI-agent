@@ -31,7 +31,14 @@ const negotiationMessageSchema = z.object({
   content: z.string().max(MAX_NEGOTIATION_INPUT_LENGTH),
 });
 
-const scenarioIdSchema = z.enum(['b2b_saas', 'price_delivery', 'first_visit']);
+const scenarioIdSchema = z.enum([
+  'b2b_saas',
+  'price_delivery',
+  'first_visit',
+  'recruitment',
+  'media_sponsor',
+  'outsourcing',
+]);
 const userRoleSchema = z.enum(['sales', 'customer']);
 const difficultySchema = z.enum(['easy', 'standard', 'hard']);
 
