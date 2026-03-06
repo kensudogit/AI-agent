@@ -1,4 +1,5 @@
 import type { ToolDefinition } from '@/types/agent';
+import { MAX_CALC_EXPRESSION_LENGTH } from '@/lib/constants';
 
 export const AGENT_TOOLS: ToolDefinition[] = [
   {
@@ -24,18 +25,28 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
 ];
 
+/** 計算式として許可する文字のみに制限（インジェクション対策） */
+const CALC_ALLOWED = /^[0-9+\-*/().%\s]+$/;
+
 export async function runTool(name: string, args: Record<string, unknown>): Promise<string> {
   switch (name) {
     case 'get_current_time':
       return new Date().toISOString();
     case 'calculate': {
-      const expr = String(args.expression ?? '');
-      const sanitized = expr.replace(/[^0-9+\-*/().%\s]/g, '');
+      const expr = String(args.expression ?? '').slice(0, MAX_CALC_EXPRESSION_LENGTH);
+      if (!expr.trim()) {
+        return 'Error: empty expression';
+      }
+      if (!CALC_ALLOWED.test(expr)) {
+        return `Error: disallowed characters in expression (only numbers, + - * / ( ) . % and spaces)`;
+      }
       try {
-        const result = Function(`"use strict"; return (${sanitized})`)();
+        const result = Function(`"use strict"; return (${expr})`)();
+        const num = Number(result);
+        if (Number.isFinite(num)) return String(num);
         return String(result);
       } catch {
-        return `Error: invalid expression "${expr}"`;
+        return `Error: invalid expression "${expr.slice(0, 50)}${expr.length > 50 ? '...' : ''}"`;
       }
     }
     default:

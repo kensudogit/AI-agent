@@ -1,38 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getScenario, getSystemPrompt } from '@/lib/negotiation';
-import type { ScenarioId, UserRole, Difficulty } from '@/lib/negotiation';
+import { negotiationChatBodySchema } from '@/lib/schemas';
+import { apiError, parseJsonBody, validationError, openaiStatusToHttp } from '@/lib/api';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-type Body = {
-  messages: { role: 'user' | 'assistant'; content: string }[];
-  scenarioId: ScenarioId;
-  userRole: UserRole;
-  difficulty?: Difficulty;
-};
-
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as Body;
-    const { messages, scenarioId, userRole, difficulty = 'standard' } = body;
+    const parsed = await parseJsonBody(req);
+    if (!parsed.ok) return parsed.response;
 
-    if (!Array.isArray(messages)) {
-      return NextResponse.json({ error: 'messages required' }, { status: 400 });
+    const parseResult = negotiationChatBodySchema.safeParse(parsed.data);
+    if (!parseResult.success) {
+      return validationError(parseResult.error);
     }
+    const { messages, scenarioId, userRole, difficulty = 'standard' } = parseResult.data;
+
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured' },
-        { status: 503 }
-      );
+      return apiError('OPENAI_API_KEY not configured', 503);
     }
 
     const scenario = getScenario(scenarioId);
     if (!scenario) {
-      return NextResponse.json({ error: 'Invalid scenarioId' }, { status: 400 });
+      return apiError('Invalid scenarioId', 400);
     }
 
     const systemPrompt = getSystemPrompt(scenario, userRole, difficulty);
@@ -54,11 +48,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (apiErr: unknown) {
       const status = (apiErr as { status?: number })?.status;
-      const code = status === 401 ? 401 : status === 429 ? 429 : 502;
-      return NextResponse.json(
-        { error: apiErr instanceof Error ? apiErr.message : 'OpenAI API error' },
-        { status: code }
-      );
+      return apiError(apiErr instanceof Error ? apiErr.message : 'OpenAI API error', openaiStatusToHttp(status));
     }
 
     const encoder = new TextEncoder();
@@ -90,9 +80,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('Negotiation chat API error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Chat failed' },
-      { status: 500 }
-    );
+    return apiError(err instanceof Error ? err.message : 'Chat failed', 500);
   }
 }

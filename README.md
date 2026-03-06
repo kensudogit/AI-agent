@@ -105,6 +105,15 @@ npm run build
 npm start
 ```
 
+## API 制限・運用
+
+- **ヘルスチェック**: `GET /api/health` で稼働状態を確認できます。  
+  - `openai`: OPENAI_API_KEY が設定されているか  
+  - `db`: PostgreSQL に接続できるか  
+  - `status` が `ok` で 200、未設定時は `degraded` で 503 を返します。
+- **リクエスト制限**: チャット・模擬商談のメッセージ数・1メッセージの文字数などは `src/lib/constants.ts` で定義し、Zod スキーマで検証しています。不正な body は 400 で拒否されます。
+- **DB 未設定時**: 会話一覧・履歴など DB を使う API は 503（Database unavailable）を返します。チャット・模擬商談の応答自体は OPENAI が有効なら利用可能です。
+
 ## Docker 関連ファイル
 
 - `Dockerfile` … Next.js のマルチステージビルド（standalone）
@@ -125,9 +134,14 @@ src/
       negotiation/       # 模擬商談チャット・フィードバックAPI
   lib/
     db.ts                 # PostgreSQL 接続
+    constants.ts          # API 制限値（メッセージ数・文字数など）
+    schemas.ts            # Zod によるリクエスト body 検証
+    api.ts                # 共通エラーレスポンス・パースヘルパー
     schema.sql            # テーブル定義
     tools.ts              # エージェント用ツール定義・実行
     negotiation.ts        # 模擬商談シナリオ・システムプロンプト定義
+  app/api/
+    health/route.ts       # ヘルスチェック（OPENAI・DB 状態）
   types/
     agent.ts              # メッセージ・会話の型
 ```

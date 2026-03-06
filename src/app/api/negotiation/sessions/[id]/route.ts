@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { apiError } from '@/lib/api';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +10,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    if (!id) {
+      return apiError('Session id required', 400);
+    }
     const { rows: sessionRows } = await query<{
       id: string;
       scenario_id: string;
@@ -27,7 +31,7 @@ export async function GET(
     );
     const session = sessionRows[0];
     if (!session) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      return apiError('Session not found', 404);
     }
     const { rows: messageRows } = await query<{ role: string; content: string; created_at: string }>(
       'SELECT role, content, created_at FROM negotiation_messages WHERE session_id = $1 ORDER BY created_at ASC',
@@ -39,9 +43,6 @@ export async function GET(
     });
   } catch (err) {
     console.error('Negotiation session get error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to get session' },
-      { status: 500 }
-    );
+    return apiError(err instanceof Error ? err.message : 'Database unavailable', 503);
   }
 }

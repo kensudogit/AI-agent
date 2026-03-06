@@ -1,39 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { query } from '@/lib/db';
-import { getScenario, type ScenarioId, type UserRole, type StructuredFeedback } from '@/lib/negotiation';
+import { getScenario, type StructuredFeedback } from '@/lib/negotiation';
+import { negotiationFeedbackBodySchema } from '@/lib/schemas';
+import { apiError, parseJsonBody, validationError, openaiStatusToHttp } from '@/lib/api';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-type Body = {
-  messages: { role: 'user' | 'assistant'; content: string }[];
-  scenarioId: ScenarioId;
-  userRole: UserRole;
-  difficulty?: string;
-  saveSession?: boolean;
-};
-
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as Body;
-    const { messages, scenarioId, userRole, difficulty = 'standard', saveSession = true } = body;
+    const parsed = await parseJsonBody(req);
+    if (!parsed.ok) return parsed.response;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'messages required' }, { status: 400 });
+    const parseResult = negotiationFeedbackBodySchema.safeParse(parsed.data);
+    if (!parseResult.success) {
+      return validationError(parseResult.error);
     }
+    const { messages, scenarioId, userRole, difficulty = 'standard', saveSession = true } = parseResult.data;
+
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured' },
-        { status: 503 }
-      );
+      return apiError('OPENAI_API_KEY not configured', 503);
     }
 
     const scenario = getScenario(scenarioId);
     if (!scenario) {
-      return NextResponse.json({ error: 'Invalid scenarioId' }, { status: 400 });
+      return apiError('Invalid scenarioId', 400);
     }
 
     const roleLabel = userRole === 'sales' ? '営業側' : '顧客側';
@@ -56,14 +50,20 @@ export async function POST(req: NextRequest) {
 - シナリオ: ${scenario.title}、ユーザー役割: ${roleLabel}
 - 具体的な言い回しの例を改善点に含めると効果的`;
 
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `以下の模擬商談ログを分析し、指定のJSON形式でフィードバックを出力してください。\n\n${log}` },
-      ],
-      temperature: 0.4,
-    });
+    let completion: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    try {
+      completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `以下の模擬商談ログを分析し、指定のJSON形式でフィードバックを出力してください。\n\n${log}` },
+        ],
+        temperature: 0.4,
+      });
+    } catch (apiErr: unknown) {
+      const status = (apiErr as { status?: number })?.status;
+      return apiError(apiErr instanceof Error ? apiErr.message : 'OpenAI API error', openaiStatusToHttp(status));
+    }
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? '';
     let structured: StructuredFeedback = {
@@ -129,6 +129,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (e) {
         console.error('Save negotiation session error:', e);
+        // sessionId は null のまま返す（フィードバックは成功）
       }
     }
 
@@ -138,9 +139,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('Negotiation feedback API error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Feedback failed' },
-      { status: 500 }
-    );
+    return apiError(err instanceof Error ? err.message : 'Feedback failed', 500);
   }
 }

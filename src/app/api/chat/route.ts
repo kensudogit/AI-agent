@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { query } from '@/lib/db';
 import { AGENT_TOOLS, runTool } from '@/lib/tools';
+import { chatBodySchema, type ChatBody } from '@/lib/schemas';
+import { apiError, badRequest, validationError, parseJsonBody, openaiStatusToHttp } from '@/lib/api';
 import type { Message } from '@/types/agent';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
@@ -11,21 +13,17 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { messages, conversationId } = body as {
-      messages: Message[];
-      conversationId?: string;
-    };
+    const parsed = await parseJsonBody<ChatBody>(req);
+    if (!parsed.ok) return parsed.response;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'messages required' }, { status: 400 });
+    const parseResult = chatBodySchema.safeParse(parsed.data);
+    if (!parseResult.success) {
+      return validationError(parseResult.error);
     }
+    const { messages, conversationId } = parseResult.data;
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OPENAI_API_KEY not configured' },
-        { status: 503 }
-      );
+      return apiError('OPENAI_API_KEY not configured', 503);
     }
 
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map((m) => {
@@ -48,11 +46,8 @@ export async function POST(req: NextRequest) {
       });
     } catch (apiErr: unknown) {
       const status = (apiErr as { status?: number })?.status;
-      const code = status === 401 ? 401 : status === 429 ? 429 : 502;
-      return NextResponse.json(
-        { error: apiErr instanceof Error ? apiErr.message : 'OpenAI API error' },
-        { status: code }
-      );
+      const code = openaiStatusToHttp(status);
+      return apiError(apiErr instanceof Error ? apiErr.message : 'OpenAI API error', code);
     }
 
     const encoder = new TextEncoder();
@@ -85,7 +80,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (toolCalls.length > 0) {
+          const seen = new Set<string>();
           for (const tc of toolCalls) {
+            if (tc.id && seen.has(tc.id)) continue;
+            if (tc.id) seen.add(tc.id);
             let args: Record<string, unknown> = {};
             try {
               args = tc.args ? JSON.parse(tc.args) : {};
@@ -113,8 +111,9 @@ export async function POST(req: NextRequest) {
               'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
               [conversationId]
             );
-          } catch {
-            // ignore persistence errors
+          } catch (dbErr) {
+            console.error('Chat DB persistence error:', dbErr);
+            // 永続化失敗してもストリームは成功として返す
           }
         }
         } catch (streamErr) {
@@ -136,9 +135,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('Chat API error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Chat failed' },
-      { status: 500 }
-    );
+    return apiError(err instanceof Error ? err.message : 'Chat failed', 500);
   }
 }
