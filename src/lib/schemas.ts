@@ -19,10 +19,10 @@ const chatMessageSchema = z.object({
   tool_call_id: z.string().optional(),
 });
 
-/** チャット POST body */
+/** チャット POST body（conversationId は未設定時に null が送られることがある） */
 export const chatBodySchema = z.object({
   messages: z.array(chatMessageSchema).min(1).max(MAX_CHAT_MESSAGES),
-  conversationId: z.string().uuid().optional(),
+  conversationId: z.string().uuid().nullish(),
 });
 
 /** 模擬商談チャット用: メッセージ */
