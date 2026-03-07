@@ -46,6 +46,7 @@ export default function NegotiationPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [remoteOpen, setRemoteOpen] = useState(true);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -102,6 +103,7 @@ export default function NegotiationPage() {
     setFeedback(null);
     setSessionId(null);
     setElapsed(0);
+    setRemoteOpen(false);
     scrollToBottom();
   }, [scenarioId, userRole, scrollToBottom]);
 
@@ -230,6 +232,7 @@ export default function NegotiationPage() {
     setMessages([]);
     setFeedback(null);
     setSessionId(null);
+    setRemoteOpen(true);
   }, []);
 
   const startVoice = useCallback(() => {
@@ -269,28 +272,22 @@ export default function NegotiationPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
-      <header className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="w-full max-w-[1600px] mx-auto px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
             <Link href="/" className="flex shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-full">
-              <span className="logo-circle block w-10 h-10 ring-2 ring-emerald-500/30 bg-slate-100 dark:bg-slate-700 overflow-hidden rounded-full">
-                <img
-                  src="/PC.png"
-                  alt="AI Agent ロゴ"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover rounded-full"
-                />
+              <span className="logo-circle block w-9 h-9 ring-2 ring-emerald-500/30 bg-slate-100 dark:bg-slate-700 overflow-hidden rounded-full">
+                <img src="/PC.png" alt="AI Agent ロゴ" width={36} height={36} className="w-full h-full object-cover rounded-full" />
               </span>
             </Link>
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white">模擬商談</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                AIとリアルタイムで商談練習。難易度・シナリオ・役割を選んで開始してください。
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold text-slate-900 dark:text-white truncate">模擬商談</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                実践的な商談シミュレーション — シナリオ・難易度・役割を選んで開始
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowHistory((h) => !h)}
@@ -298,7 +295,7 @@ export default function NegotiationPage() {
             >
               {showHistory ? '閉じる' : '履歴'}
             </button>
-            <Link href="/" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400">
+            <Link href="/" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 whitespace-nowrap">
               トップへ
             </Link>
           </div>
@@ -306,7 +303,7 @@ export default function NegotiationPage() {
       </header>
 
       {showHistory && (
-        <aside className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 p-4 max-h-64 overflow-y-auto">
+        <aside className="shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/95 p-4 max-h-52 overflow-y-auto">
           <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">過去のセッション</h3>
           {sessions.length === 0 ? (
             <p className="text-sm text-slate-500">まだ履歴がありません。</p>
@@ -328,102 +325,141 @@ export default function NegotiationPage() {
         </aside>
       )}
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 flex flex-col">
+      {/* 伸長式リモコン盤: シナリオ・難易度・役割・開始 */}
+      <section className="shrink-0 w-full max-w-[1600px] mx-auto px-4 py-3">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setRemoteOpen((o) => !o)}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+            aria-expanded={remoteOpen}
+          >
+            <span className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+              <svg className="w-5 h-5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              シナリオを選ぶ
+            </span>
+            <span className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[50%]">
+              {scenario ? scenario.title : '未選択'}
+              {scenario && ` · ${DIFFICULTY_LABELS[difficulty]} · ${roleLabel}`}
+            </span>
+            <svg
+              className={`w-5 h-5 text-slate-500 shrink-0 transition-transform ${remoteOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {remoteOpen && (
+            <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-4 max-h-[min(70vh,520px)] overflow-y-auto">
+              <div>
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">シナリオ</h3>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {NEGOTIATION_SCENARIOS.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setScenarioId(s.id);
+                        setSelectScenarioHint(false);
+                      }}
+                      className={`text-left p-3 rounded-xl border-2 transition text-sm ${
+                        scenarioId === s.id
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/25 text-blue-800 dark:text-blue-200'
+                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
+                      }`}
+                    >
+                      <span className="font-medium block text-slate-900 dark:text-white">{s.title}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{s.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">難易度</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['easy', 'standard', 'hard'] as const).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDifficulty(d)}
+                        className={`px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition ${
+                          difficulty === d
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                            : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        {DIFFICULTY_LABELS[d]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">あなたの役割</span>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="role"
+                        checked={userRole === 'sales'}
+                        onChange={() => setUserRole('sales')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-slate-900 dark:text-white text-sm">営業側</span>
+                      <span className="text-xs text-slate-500">（AIが顧客）</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="role"
+                        checked={userRole === 'customer'}
+                        onChange={() => setUserRole('customer')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-slate-900 dark:text-white text-sm">顧客側</span>
+                      <span className="text-xs text-slate-500">（AIが営業）</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={handleStartClick}
+                    className="cursor-pointer px-5 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    aria-label="商談を開始"
+                  >
+                    商談を開始
+                  </button>
+                  {selectScenarioHint && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400" role="alert">
+                      シナリオを選択してください
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-4 pb-4 flex flex-col gap-3">
         {!started ? (
-          <div className="space-y-6">
-            <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-3">難易度</h2>
-              <div className="flex flex-wrap gap-2">
-                {(['easy', 'standard', 'hard'] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDifficulty(d)}
-                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition ${
-                      difficulty === d
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    {DIFFICULTY_LABELS[d]}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-3">シナリオを選ぶ</h2>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {NEGOTIATION_SCENARIOS.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => {
-                      setScenarioId(s.id);
-                      setSelectScenarioHint(false);
-                    }}
-                    className={`text-left p-4 rounded-lg border-2 transition ${
-                      scenarioId === s.id
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    <span className="font-medium text-slate-900 dark:text-white block">{s.title}</span>
-                    <span className="text-sm text-slate-500 dark:text-slate-400 mt-1 block">{s.description}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
-              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-3">あなたの役割</h2>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    checked={userRole === 'sales'}
-                    onChange={() => setUserRole('sales')}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-slate-900 dark:text-white">営業側</span>
-                  <span className="text-sm text-slate-500">（AIが顧客）</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    checked={userRole === 'customer'}
-                    onChange={() => setUserRole('customer')}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-slate-900 dark:text-white">顧客側</span>
-                  <span className="text-sm text-slate-500">（AIが営業）</span>
-                </label>
-              </div>
-            </section>
-
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={handleStartClick}
-                className="cursor-pointer px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                aria-label="商談を開始"
-              >
-                商談を開始
-              </button>
-              {selectScenarioHint && (
-                <p className="text-sm text-amber-600 dark:text-amber-400" role="alert">
-                  シナリオを選択してから「商談を開始」を押してください。
-                </p>
-              )}
+          <div className="flex-1 flex items-center justify-center py-12 text-center">
+            <div className="max-w-md text-slate-500 dark:text-slate-400">
+              <p className="text-base">上記のリモコン盤でシナリオ・難易度・役割を選び、「商談を開始」を押してください。</p>
+              <p className="text-sm mt-2">開始後、チャットエリアが表示され、AIが相手役として応答します。</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
-              <span className="text-sm text-slate-600 dark:text-slate-400">
-                {scenario?.title} — あなた: {roleLabel} {opponentLabel} · 難易度: {DIFFICULTY_LABELS[difficulty]} · 経過 {formatElapsed(elapsed)}
+            <div className="shrink-0 flex items-center justify-between flex-wrap gap-2 text-sm">
+              <span className="text-slate-600 dark:text-slate-400">
+                {scenario?.title} — {roleLabel} {opponentLabel} · {DIFFICULTY_LABELS[difficulty]} · 経過 {formatElapsed(elapsed)}
               </span>
               <div className="flex gap-2">
                 <button
@@ -444,32 +480,34 @@ export default function NegotiationPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 min-h-[280px]">
-              {messages.map((m, i) => (
-                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} mb-3`}>
-                  <div
-                    className={`rounded-2xl px-4 py-2 max-w-[85%] ${
-                      m.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
-                    }`}
-                  >
-                    <span className="text-xs opacity-80 block mb-0.5">{m.role === 'user' ? 'あなた' : 'AI'}</span>
-                    <p className="whitespace-pre-wrap">{m.content}</p>
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-inner">
+              <div className="max-w-4xl mx-auto space-y-4">
+                {messages.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`rounded-2xl px-5 py-3 max-w-[88%] text-base leading-relaxed ${
+                        m.role === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
+                      }`}
+                    >
+                      <span className="text-xs opacity-80 block mb-1">{m.role === 'user' ? 'あなた' : 'AI'}</span>
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {loading && (
-                <div className="flex justify-start mb-3">
-                  <div className="rounded-2xl px-4 py-2 bg-slate-200 dark:bg-slate-700 animate-pulse">...</div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+                ))}
+                {loading && (
+                  <div className="flex justify-start">
+                    <div className="rounded-2xl px-5 py-3 bg-slate-200 dark:bg-slate-700 animate-pulse text-slate-500">...</div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
             </div>
 
             {feedback && (
-              <div className="mt-4 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 space-y-3">
-                <h3 className="font-medium text-green-900 dark:text-green-100">フィードバック</h3>
+              <div className="shrink-0 p-5 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 space-y-3">
+                <h3 className="font-semibold text-green-900 dark:text-green-100">フィードバック</h3>
                 {feedback.overall_score != null && (
                   <p className="text-sm text-green-800 dark:text-green-200">
                     総合評価: ★{feedback.overall_score}/5
@@ -478,7 +516,7 @@ export default function NegotiationPage() {
                 {feedback.good_points.length > 0 && (
                   <div>
                     <span className="text-xs font-medium text-green-700 dark:text-green-300">良かった点</span>
-                    <ul className="list-disc list-inside text-sm text-green-800 dark:text-green-200 mt-0.5">
+                    <ul className="list-disc list-inside text-sm text-green-800 dark:text-green-200 mt-0.5 space-y-0.5">
                       {feedback.good_points.map((p, i) => (
                         <li key={i}>{p}</li>
                       ))}
@@ -488,7 +526,7 @@ export default function NegotiationPage() {
                 {feedback.improve_points.length > 0 && (
                   <div>
                     <span className="text-xs font-medium text-green-700 dark:text-green-300">改善できる点</span>
-                    <ul className="list-disc list-inside text-sm text-green-800 dark:text-green-200 mt-0.5">
+                    <ul className="list-disc list-inside text-sm text-green-800 dark:text-green-200 mt-0.5 space-y-0.5">
                       {feedback.improve_points.map((p, i) => (
                         <li key={i}>{p}</li>
                       ))}
@@ -496,23 +534,23 @@ export default function NegotiationPage() {
                   </div>
                 )}
                 {feedback.advice && (
-                  <p className="text-sm text-green-800 dark:text-green-200 pt-1 border-t border-green-200 dark:border-green-700">
+                  <p className="text-sm text-green-800 dark:text-green-200 pt-2 border-t border-green-200 dark:border-green-700">
                     {feedback.advice}
                   </p>
                 )}
               </div>
             )}
 
-            <div className="mt-4 flex gap-2 items-end">
+            <div className="shrink-0 flex gap-2 items-end">
               <div className="flex-1 relative">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value.slice(0, INPUT_MAX_LENGTH))}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-                  placeholder="メッセージを入力...（最大500文字）"
+                  placeholder="メッセージを入力（最大500文字）…"
                   maxLength={INPUT_MAX_LENGTH}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 pr-16 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={loading}
                 />
                 <span className="absolute right-3 bottom-2.5 text-xs text-slate-400">
@@ -522,7 +560,7 @@ export default function NegotiationPage() {
               <button
                 type="button"
                 onClick={isListening ? stopVoice : startVoice}
-                className={`p-3 rounded-xl ${isListening ? 'bg-red-500' : 'bg-slate-200 dark:bg-slate-700'} hover:opacity-90`}
+                className={`p-3 rounded-xl shrink-0 ${isListening ? 'bg-red-500' : 'bg-slate-200 dark:bg-slate-700'} hover:opacity-90`}
                 title={isListening ? '音声入力停止' : '音声入力'}
                 aria-label={isListening ? '音声入力停止' : '音声入力'}
               >
@@ -534,7 +572,7 @@ export default function NegotiationPage() {
                 type="button"
                 onClick={() => sendMessage(input)}
                 disabled={loading || !input.trim()}
-                className="px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 shrink-0"
               >
                 送信
               </button>

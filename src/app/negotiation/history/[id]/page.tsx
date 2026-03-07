@@ -56,14 +56,14 @@ export default function NegotiationHistoryPage({ params }: { params: { id: strin
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <header className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="w-full max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">商談履歴</h1>
           <Link href="/negotiation" className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400">
             模擬商談に戻る
           </Link>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <main className="w-full max-w-[1600px] mx-auto px-4 py-6 space-y-6">
         <div className="text-sm text-slate-500 dark:text-slate-400">
           {scenario?.title ?? session.scenario_id} · {roleLabel} · {DIFFICULTY_LABELS[session.difficulty as keyof typeof DIFFICULTY_LABELS] ?? session.difficulty} · {new Date(session.created_at).toLocaleString('ja-JP')}
         </div>

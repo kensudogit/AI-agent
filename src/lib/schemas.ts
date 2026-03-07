@@ -38,6 +38,12 @@ const scenarioIdSchema = z.enum([
   'recruitment',
   'media_sponsor',
   'outsourcing',
+  'enterprise_license',
+  'renewal_contract',
+  'partnership_mou',
+  'real_estate_lease',
+  'consulting_fee',
+  'maintenance_sla',
 ]);
 const userRoleSchema = z.enum(['sales', 'customer']);
 const difficultySchema = z.enum(['easy', 'standard', 'hard']);
