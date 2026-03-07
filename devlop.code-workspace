@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../devphp"
+		},
+		{
+			"path": "../../workspace"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "devlop",
+		"powershell.cwd": "devlop"
+	}
+}

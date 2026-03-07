@@ -154,9 +154,22 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen max-w-3xl mx-auto">
       <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">AI Agent</h1>
-          <p className="text-sm text-slate-500">音声・テキストで会話し、アクションを実行できます</p>
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-full">
+            <span className="logo-circle block w-10 h-10 ring-2 ring-emerald-500/30 bg-slate-100 dark:bg-slate-700 overflow-hidden rounded-full">
+              <img
+                src="/PC.png"
+                alt="AI Agent ロゴ"
+                width={40}
+                height={40}
+                className="w-full h-full object-cover rounded-full"
+              />
+            </span>
+          </Link>
+          <div>
+            <h1 className="text-xl font-semibold">AI Agent</h1>
+            <p className="text-sm text-slate-500">音声・テキストで会話し、アクションを実行できます</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button

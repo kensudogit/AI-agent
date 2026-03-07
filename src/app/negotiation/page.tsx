@@ -271,11 +271,24 @@ export default function NegotiationPage() {
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
       <header className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-white">模擬商談</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              AIとリアルタイムで商談練習。難易度・シナリオ・役割を選んで開始してください。
-            </p>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-full">
+              <span className="logo-circle block w-10 h-10 ring-2 ring-emerald-500/30 bg-slate-100 dark:bg-slate-700 overflow-hidden rounded-full">
+                <img
+                  src="/PC.png"
+                  alt="AI Agent ロゴ"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              </span>
+            </Link>
+            <div>
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-white">模擬商談</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                AIとリアルタイムで商談練習。難易度・シナリオ・役割を選んで開始してください。
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button

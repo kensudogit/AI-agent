@@ -18,3 +18,37 @@ body {
   color: var(--foreground);
   background: var(--background);
 }
+
+/* ロゴ用: 円形＋軽いパルス・光沢アニメーション */
+@keyframes logo-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes logo-shine {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.08);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.logo-circle {
+  border-radius: 50%;
+  overflow: hidden;
+  animation: logo-pulse 2.5s ease-in-out infinite, logo-shine 3s ease-in-out infinite;
+}
+
+.logo-circle:hover {
+  animation: logo-pulse 1.2s ease-in-out infinite, logo-shine 2s ease-in-out infinite;
+}
