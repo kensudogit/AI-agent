@@ -325,122 +325,146 @@ export default function NegotiationPage() {
         </aside>
       )}
 
-      {/* 伸長式リモコン盤: シナリオ・難易度・役割・開始 */}
+      {/* リモコン盤: 貼付デザイン（紫ヘッダー・カテゴリ・色付きアイコンボタン） */}
       <section className="shrink-0 w-full max-w-[1600px] mx-auto px-4 py-3">
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-hidden">
+          {/* ヘッダー: 紫背景・ゲームパッドアイコン・「リモコン盤」・開閉三角 */}
           <button
             type="button"
             onClick={() => setRemoteOpen((o) => !o)}
-            className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-violet-600 hover:bg-violet-700 text-white transition-colors"
             aria-expanded={remoteOpen}
           >
-            <span className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-              <svg className="w-5 h-5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <span className="font-medium flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M18 8h-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h2v2c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2zm-4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm4 6h-2v-2h2v2zm0-4h-2v-2h2v2z" />
               </svg>
-              シナリオを選ぶ
+              リモコン盤
             </span>
-            <span className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[50%]">
-              {scenario ? scenario.title : '未選択'}
+            <span className="text-sm text-white/90 truncate max-w-[50%]">
+              {scenario ? scenario.title : 'シナリオを選ぶ'}
               {scenario && ` · ${DIFFICULTY_LABELS[difficulty]} · ${roleLabel}`}
             </span>
             <svg
-              className={`w-5 h-5 text-slate-500 shrink-0 transition-transform ${remoteOpen ? 'rotate-180' : ''}`}
-              fill="none"
-              stroke="currentColor"
+              className={`w-5 h-5 shrink-0 transition-transform ${remoteOpen ? 'rotate-180' : ''}`}
+              fill="currentColor"
               viewBox="0 0 24 24"
               aria-hidden
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path d="M7 10l5 5 5-5z" />
             </svg>
           </button>
           {remoteOpen && (
-            <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-4 max-h-[min(70vh,520px)] overflow-y-auto">
+            <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-5 max-h-[min(70vh,560px)] overflow-y-auto bg-slate-50/50 dark:bg-slate-800/50">
+              {/* シナリオ選択: 色付きアイコンボタン */}
               <div>
-                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">シナリオ</h3>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {NEGOTIATION_SCENARIOS.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => {
-                        setScenarioId(s.id);
-                        setSelectScenarioHint(false);
-                      }}
-                      className={`text-left p-3 rounded-xl border-2 transition text-sm ${
-                        scenarioId === s.id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/25 text-blue-800 dark:text-blue-200'
-                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
-                      }`}
-                    >
-                      <span className="font-medium block text-slate-900 dark:text-white">{s.title}</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{s.description}</span>
-                    </button>
-                  ))}
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                  <span className="w-1 h-4 rounded bg-violet-500" aria-hidden />
+                  シナリオ選択
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {[
+                    { id: 'b2b_saas' as const, label: 'B2B SaaS', color: 'bg-indigo-500 hover:bg-indigo-600' },
+                    { id: 'price_delivery' as const, label: '価格・納期', color: 'bg-blue-500 hover:bg-blue-600' },
+                    { id: 'first_visit' as const, label: '初回訪問', color: 'bg-emerald-500 hover:bg-emerald-600' },
+                    { id: 'recruitment' as const, label: '人材紹介', color: 'bg-violet-400 hover:bg-violet-500' },
+                    { id: 'media_sponsor' as const, label: '広告契約', color: 'bg-rose-500 hover:bg-rose-600' },
+                    { id: 'outsourcing' as const, label: '外注契約', color: 'bg-orange-500 hover:bg-orange-600' },
+                    { id: 'enterprise_license' as const, label: 'エンタープライズ', color: 'bg-purple-600 hover:bg-purple-700' },
+                    { id: 'renewal_contract' as const, label: '更新契約', color: 'bg-teal-500 hover:bg-teal-600' },
+                    { id: 'partnership_mou' as const, label: '業務提携MOU', color: 'bg-pink-500 hover:bg-pink-600' },
+                    { id: 'real_estate_lease' as const, label: '賃貸オフィス', color: 'bg-amber-500 hover:bg-amber-600' },
+                    { id: 'consulting_fee' as const, label: 'コンサル報酬', color: 'bg-sky-500 hover:bg-sky-600' },
+                    { id: 'maintenance_sla' as const, label: '保守・SLA', color: 'bg-green-600 hover:bg-green-700' },
+                  ].map(({ id, label, color }) => {
+                    const s = NEGOTIATION_SCENARIOS.find((sc) => sc.id === id);
+                    const selected = scenarioId === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setScenarioId(id);
+                          setSelectScenarioHint(false);
+                        }}
+                        title={s?.description}
+                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-white text-sm font-medium transition shadow-md ${color} ${
+                          selected ? 'ring-2 ring-offset-2 ring-slate-800 dark:ring-offset-slate-800 ring-offset-2' : ''
+                        }`}
+                      >
+                        <svg className="w-6 h-6 shrink-0 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-center leading-tight">{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-4">
-                <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">難易度</span>
+              {/* 難易度・役割: 編集操作風ボタン群 */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                  <span className="w-1 h-4 rounded bg-violet-500" aria-hidden />
+                  難易度・役割
+                </h3>
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="flex flex-wrap gap-1.5">
                     {(['easy', 'standard', 'hard'] as const).map((d) => (
                       <button
                         key={d}
                         type="button"
                         onClick={() => setDifficulty(d)}
-                        className={`px-3 py-1.5 rounded-lg border-2 text-sm font-medium transition ${
+                        className={`rounded-xl px-4 py-2 text-sm font-medium text-white transition shadow-md ${
                           difficulty === d
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                            : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'
+                            ? 'bg-violet-600 ring-2 ring-offset-2 ring-violet-400'
+                            : 'bg-slate-400 hover:bg-slate-500 dark:bg-slate-600 dark:hover:bg-slate-500'
                         }`}
                       >
                         {DIFFICULTY_LABELS[d]}
                       </button>
                     ))}
                   </div>
-                </div>
-                <div>
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block mb-1">あなたの役割</span>
-                  <div className="flex gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="role"
-                        checked={userRole === 'sales'}
-                        onChange={() => setUserRole('sales')}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span className="text-slate-900 dark:text-white text-sm">営業側</span>
-                      <span className="text-xs text-slate-500">（AIが顧客）</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="role"
-                        checked={userRole === 'customer'}
-                        onChange={() => setUserRole('customer')}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span className="text-slate-900 dark:text-white text-sm">顧客側</span>
-                      <span className="text-xs text-slate-500">（AIが営業）</span>
-                    </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUserRole('sales')}
+                      className={`rounded-xl px-4 py-2 text-sm font-medium transition shadow-md ${
+                        userRole === 'sales'
+                          ? 'bg-indigo-500 text-white ring-2 ring-offset-2 ring-indigo-300'
+                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500'
+                      }`}
+                    >
+                      営業側
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRole('customer')}
+                      className={`rounded-xl px-4 py-2 text-sm font-medium transition shadow-md ${
+                        userRole === 'customer'
+                          ? 'bg-indigo-500 text-white ring-2 ring-offset-2 ring-indigo-300'
+                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500'
+                      }`}
+                    >
+                      顧客側
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-auto">
-                  <button
-                    type="button"
-                    onClick={handleStartClick}
-                    className="cursor-pointer px-5 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    aria-label="商談を開始"
-                  >
-                    商談を開始
-                  </button>
-                  {selectScenarioHint && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400" role="alert">
-                      シナリオを選択してください
-                    </p>
-                  )}
-                </div>
+              </div>
+              {/* 開始: 検索欄風の1行 */}
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleStartClick}
+                  className="rounded-xl px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium shadow-md focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2"
+                  aria-label="商談を開始"
+                >
+                  商談を開始
+                </button>
+                {selectScenarioHint && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400" role="alert">
+                    シナリオを選択してください
+                  </p>
+                )}
               </div>
             </div>
           )}
