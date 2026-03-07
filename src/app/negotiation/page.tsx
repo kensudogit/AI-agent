@@ -46,7 +46,7 @@ export default function NegotiationPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [remoteOpen, setRemoteOpen] = useState(true);
+  const [remoteModalOpen, setRemoteModalOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -86,6 +86,15 @@ export default function NegotiationPage() {
     };
   }, [started]);
 
+  useEffect(() => {
+    if (!remoteModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setRemoteModalOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [remoteModalOpen]);
+
   const startSession = useCallback(() => {
     if (!scenarioId) {
       setSelectScenarioHint(true);
@@ -103,7 +112,7 @@ export default function NegotiationPage() {
     setFeedback(null);
     setSessionId(null);
     setElapsed(0);
-    setRemoteOpen(false);
+    setRemoteModalOpen(false);
     scrollToBottom();
   }, [scenarioId, userRole, scrollToBottom]);
 
@@ -232,7 +241,7 @@ export default function NegotiationPage() {
     setMessages([]);
     setFeedback(null);
     setSessionId(null);
-    setRemoteOpen(true);
+    setRemoteModalOpen(true);
   }, []);
 
   const startVoice = useCallback(() => {
@@ -290,6 +299,16 @@ export default function NegotiationPage() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
+              onClick={() => setRemoteModalOpen(true)}
+              className="text-sm px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M18 8h-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h2v2c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2z" />
+              </svg>
+              シナリオを選ぶ
+            </button>
+            <button
+              type="button"
               onClick={() => setShowHistory((h) => !h)}
               className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
@@ -325,44 +344,46 @@ export default function NegotiationPage() {
         </aside>
       )}
 
-      {/* リモコン盤: 貼付デザイン（紫ヘッダー・カテゴリ・色付きアイコンボタン） */}
-      <section className="shrink-0 w-full max-w-[1600px] mx-auto px-4 py-3">
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-hidden">
-          {/* ヘッダー: 紫背景・ゲームパッドアイコン・「リモコン盤」・開閉三角 */}
-          <button
-            type="button"
-            onClick={() => setRemoteOpen((o) => !o)}
-            className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-violet-600 hover:bg-violet-700 text-white transition-colors"
-            aria-expanded={remoteOpen}
+      {/* リモコン盤モーダル */}
+      {remoteModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setRemoteModalOpen(false)}
+            aria-hidden
+          />
+          <div
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[min(96vw,520px)] max-h-[90vh] flex flex-col rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remote-modal-title"
           >
-            <span className="font-medium flex items-center gap-2">
-              <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path d="M18 8h-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h2v2c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2zm-4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm4 6h-2v-2h2v2zm0-4h-2v-2h2v2z" />
-              </svg>
-              リモコン盤
-            </span>
-            <span className="text-sm text-white/90 truncate max-w-[50%]">
-              {scenario ? scenario.title : 'シナリオを選ぶ'}
-              {scenario && ` · ${DIFFICULTY_LABELS[difficulty]} · ${roleLabel}`}
-            </span>
-            <svg
-              className={`w-5 h-5 shrink-0 transition-transform ${remoteOpen ? 'rotate-180' : ''}`}
-              fill="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden
-            >
-              <path d="M7 10l5 5 5-5z" />
-            </svg>
-          </button>
-          {remoteOpen && (
-            <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-5 max-h-[min(70vh,560px)] overflow-y-auto bg-slate-50/50 dark:bg-slate-800/50">
+            <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-violet-600 text-white">
+              <h2 id="remote-modal-title" className="font-semibold flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path d="M18 8h-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h2v2c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2zm-4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm4 6h-2v-2h2v2zm0-4h-2v-2h2v2zm0-8h-2V5h2v4z" />
+                </svg>
+                リモコン盤 — シナリオを選ぶ
+              </h2>
+              <button
+                type="button"
+                onClick={() => setRemoteModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50"
+                aria-label="閉じる"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+              </button>
+            </header>
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5 bg-slate-50/50 dark:bg-slate-800/50">
               {/* シナリオ選択: 色付きアイコンボタン */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
                   <span className="w-1 h-4 rounded bg-violet-500" aria-hidden />
                   シナリオ選択
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
                     { id: 'b2b_saas' as const, label: 'B2B SaaS', color: 'bg-indigo-500 hover:bg-indigo-600' },
                     { id: 'price_delivery' as const, label: '価格・納期', color: 'bg-blue-500 hover:bg-blue-600' },
@@ -383,16 +404,11 @@ export default function NegotiationPage() {
                       <button
                         key={id}
                         type="button"
-                        onClick={() => {
-                          setScenarioId(id);
-                          setSelectScenarioHint(false);
-                        }}
+                        onClick={() => { setScenarioId(id); setSelectScenarioHint(false); }}
                         title={s?.description}
-                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-white text-sm font-medium transition shadow-md ${color} ${
-                          selected ? 'ring-2 ring-offset-2 ring-slate-800 dark:ring-offset-slate-800 ring-offset-2' : ''
-                        }`}
+                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-white text-sm font-medium transition shadow-md ${color} ${selected ? 'ring-2 ring-offset-2 ring-slate-800 dark:ring-offset-slate-800' : ''}`}
                       >
-                        <svg className="w-6 h-6 shrink-0 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <svg className="w-5 h-5 shrink-0 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <span className="text-center leading-tight">{label}</span>
@@ -401,7 +417,6 @@ export default function NegotiationPage() {
                   })}
                 </div>
               </div>
-              {/* 難易度・役割: 編集操作風ボタン群 */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
                   <span className="w-1 h-4 rounded bg-violet-500" aria-hidden />
@@ -450,7 +465,6 @@ export default function NegotiationPage() {
                   </div>
                 </div>
               </div>
-              {/* 開始: 検索欄風の1行 */}
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   type="button"
@@ -467,16 +481,15 @@ export default function NegotiationPage() {
                 )}
               </div>
             </div>
-          )}
-        </div>
-      </section>
-
+          </div>
+        </>
+      )}
       <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-4 pb-4 flex flex-col gap-3">
         {!started ? (
           <div className="flex-1 flex items-center justify-center py-12 text-center">
             <div className="max-w-md text-slate-500 dark:text-slate-400">
-              <p className="text-base">上記のリモコン盤でシナリオ・難易度・役割を選び、「商談を開始」を押してください。</p>
-              <p className="text-sm mt-2">開始後、チャットエリアが表示され、AIが相手役として応答します。</p>
+              <p className="text-base">ヘッダーの「シナリオを選ぶ」でモーダルを開き、シナリオ・難易度・役割を選んで「商談を開始」を押してください。</p>
+              <p className="text-sm mt-2">開始後、チャットエリアでAIが相手役として応答します。</p>
             </div>
           </div>
         ) : (
