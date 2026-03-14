@@ -397,6 +397,7 @@ export default function NegotiationPage() {
                     { id: 'real_estate_lease' as const, label: '賃貸オフィス', color: 'bg-amber-500 hover:bg-amber-600' },
                     { id: 'consulting_fee' as const, label: 'コンサル報酬', color: 'bg-sky-500 hover:bg-sky-600' },
                     { id: 'maintenance_sla' as const, label: '保守・SLA', color: 'bg-green-600 hover:bg-green-700' },
+                    { id: 'core_system_schedule_delay' as const, label: '基幹・遅延交渉', color: 'bg-slate-600 hover:bg-slate-700' },
                   ].map(({ id, label, color }) => {
                     const s = NEGOTIATION_SCENARIOS.find((sc) => sc.id === id);
                     const selected = scenarioId === id;
