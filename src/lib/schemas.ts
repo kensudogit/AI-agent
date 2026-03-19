@@ -45,6 +45,7 @@ const scenarioIdSchema = z.enum([
   'consulting_fee',
   'maintenance_sla',
   'core_system_schedule_delay',
+  'senior_it_engineer_dispatch',
 ]);
 const userRoleSchema = z.enum(['sales', 'customer']);
 const difficultySchema = z.enum(['easy', 'standard', 'hard']);

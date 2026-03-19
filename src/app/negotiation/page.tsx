@@ -398,6 +398,7 @@ export default function NegotiationPage() {
                     { id: 'consulting_fee' as const, label: 'コンサル報酬', color: 'bg-sky-500 hover:bg-sky-600' },
                     { id: 'maintenance_sla' as const, label: '保守・SLA', color: 'bg-green-600 hover:bg-green-700' },
                     { id: 'core_system_schedule_delay' as const, label: '基幹・遅延交渉', color: 'bg-slate-600 hover:bg-slate-700' },
+                    { id: 'senior_it_engineer_dispatch' as const, label: '高齢IT派遣', color: 'bg-cyan-600 hover:bg-cyan-700' },
                   ].map(({ id, label, color }) => {
                     const s = NEGOTIATION_SCENARIOS.find((sc) => sc.id === id);
                     const selected = scenarioId === id;
@@ -545,7 +546,12 @@ export default function NegotiationPage() {
 
             {feedback && (
               <div className="shrink-0 p-5 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 space-y-3">
-                <h3 className="font-semibold text-green-900 dark:text-green-100">フィードバック</h3>
+                <div>
+                  <h3 className="font-semibold text-green-900 dark:text-green-100">フィードバック（厳格・辛辣モード）</h3>
+                  <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-1">
+                    忖度のない講評です。スコア・指摘は意図的に厳しめに付けています。
+                  </p>
+                </div>
                 {feedback.overall_score != null && (
                   <p className="text-sm text-green-800 dark:text-green-200">
                     総合評価: ★{feedback.overall_score}/5
