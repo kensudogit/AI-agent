@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   NEGOTIATION_SCENARIOS,
+  SCENARIO_PICKER_META,
   getOpeningMessage,
   DIFFICULTY_LABELS,
   type ScenarioId,
@@ -53,6 +55,11 @@ export default function NegotiationPage() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [selectScenarioHint, setSelectScenarioHint] = useState(false);
+  /** SSR 後のみ Portal 可能（モーダルを body 直下に出してクリック被りを防ぐ） */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -322,7 +329,9 @@ export default function NegotiationPage() {
       </header>
 
       {showHistory && (
-        <aside className="shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/95 p-4 max-h-52 overflow-y-auto">
+        <aside
+          className={`shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/95 p-4 max-h-52 overflow-y-auto${remoteModalOpen ? ' pointer-events-none' : ''}`}
+        >
           <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">過去のセッション</h3>
           {sessions.length === 0 ? (
             <p className="text-sm text-slate-500">まだ履歴がありません。</p>
@@ -344,20 +353,22 @@ export default function NegotiationPage() {
         </aside>
       )}
 
-      {/* リモコン盤モーダル */}
-      {remoteModalOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setRemoteModalOpen(false)}
-            aria-hidden
-          />
-          <div
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[min(96vw,520px)] max-h-[90vh] flex flex-col rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl overflow-hidden"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="remote-modal-title"
-          >
+      {/* リモコン盤モーダル: body に Portal + 高 z-index（main 等の後続要素がクリックを奪うのを防ぐ） */}
+      {mounted &&
+        remoteModalOpen &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[1000] bg-black/50"
+              onClick={() => setRemoteModalOpen(false)}
+              aria-hidden
+            />
+            <div
+              className="fixed left-1/2 top-1/2 z-[1001] w-[min(96vw,520px)] max-h-[90vh] min-h-0 -translate-x-1/2 -translate-y-1/2 flex flex-col rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl overflow-hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="remote-modal-title"
+            >
             <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-violet-600 text-white">
               <h2 id="remote-modal-title" className="font-semibold flex items-center gap-2">
                 <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -376,44 +387,32 @@ export default function NegotiationPage() {
                 </svg>
               </button>
             </header>
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5 bg-slate-50/50 dark:bg-slate-800/50">
-              {/* シナリオ選択: 色付きアイコンボタン */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-10 space-y-5 bg-slate-50/50 dark:bg-slate-800/50">
+              {/* シナリオ選択: NEGOTIATION_SCENARIOS 順（メタは SCENARIO_PICKER_META で型安全に紐づけ） */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
                   <span className="w-1 h-4 rounded bg-violet-500" aria-hidden />
                   シナリオ選択
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    { id: 'b2b_saas' as const, label: 'B2B SaaS', color: 'bg-indigo-500 hover:bg-indigo-600' },
-                    { id: 'price_delivery' as const, label: '価格・納期', color: 'bg-blue-500 hover:bg-blue-600' },
-                    { id: 'first_visit' as const, label: '初回訪問', color: 'bg-emerald-500 hover:bg-emerald-600' },
-                    { id: 'recruitment' as const, label: '人材紹介', color: 'bg-violet-400 hover:bg-violet-500' },
-                    { id: 'media_sponsor' as const, label: '広告契約', color: 'bg-rose-500 hover:bg-rose-600' },
-                    { id: 'outsourcing' as const, label: '外注契約', color: 'bg-orange-500 hover:bg-orange-600' },
-                    { id: 'enterprise_license' as const, label: 'エンタープライズ', color: 'bg-purple-600 hover:bg-purple-700' },
-                    { id: 'renewal_contract' as const, label: '更新契約', color: 'bg-teal-500 hover:bg-teal-600' },
-                    { id: 'partnership_mou' as const, label: '業務提携MOU', color: 'bg-pink-500 hover:bg-pink-600' },
-                    { id: 'real_estate_lease' as const, label: '賃貸オフィス', color: 'bg-amber-500 hover:bg-amber-600' },
-                    { id: 'consulting_fee' as const, label: 'コンサル報酬', color: 'bg-sky-500 hover:bg-sky-600' },
-                    { id: 'maintenance_sla' as const, label: '保守・SLA', color: 'bg-green-600 hover:bg-green-700' },
-                    { id: 'core_system_schedule_delay' as const, label: '基幹・遅延交渉', color: 'bg-slate-600 hover:bg-slate-700' },
-                    { id: 'senior_it_engineer_dispatch' as const, label: '高齢IT派遣', color: 'bg-cyan-600 hover:bg-cyan-700' },
-                  ].map(({ id, label, color }) => {
-                    const s = NEGOTIATION_SCENARIOS.find((sc) => sc.id === id);
-                    const selected = scenarioId === id;
+                  {NEGOTIATION_SCENARIOS.map((s) => {
+                    const meta = SCENARIO_PICKER_META[s.id];
+                    const selected = scenarioId === s.id;
                     return (
                       <button
-                        key={id}
+                        key={s.id}
                         type="button"
-                        onClick={() => { setScenarioId(id); setSelectScenarioHint(false); }}
-                        title={s?.description}
-                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-white text-sm font-medium transition shadow-md ${color} ${selected ? 'ring-2 ring-offset-2 ring-slate-800 dark:ring-offset-slate-800' : ''}`}
+                        onClick={() => {
+                          setScenarioId(s.id);
+                          setSelectScenarioHint(false);
+                        }}
+                        title={s.description}
+                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 min-h-[4.5rem] text-white text-sm font-medium transition shadow-md active:scale-[0.98] ${meta.buttonClass} ${selected ? 'ring-2 ring-offset-2 ring-slate-800 dark:ring-offset-slate-800' : ''}`}
                       >
                         <svg className="w-5 h-5 shrink-0 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <span className="text-center leading-tight">{label}</span>
+                        <span className="text-center leading-tight">{meta.label}</span>
                       </button>
                     );
                   })}
@@ -484,9 +483,12 @@ export default function NegotiationPage() {
               </div>
             </div>
           </div>
-        </>
-      )}
-      <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-4 pb-4 flex flex-col gap-3">
+          </>,
+          document.body
+        )}
+      <main
+        className={`flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-4 pb-4 flex flex-col gap-3${remoteModalOpen ? ' pointer-events-none' : ''}`}
+      >
         {!started ? (
           <div className="flex-1 flex items-center justify-center py-12 text-center">
             <div className="max-w-md text-slate-500 dark:text-slate-400">
