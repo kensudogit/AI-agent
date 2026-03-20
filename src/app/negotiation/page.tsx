@@ -374,7 +374,7 @@ export default function NegotiationPage() {
                 <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                   <path d="M18 8h-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h2v2c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2zm-4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm4 6h-2v-2h2v2zm0-4h-2v-2h2v2zm0-8h-2V5h2v4z" />
                 </svg>
-                リモコン盤 — シナリオを選ぶ
+                シナリオを選ぶ
               </h2>
               <button
                 type="button"
@@ -387,14 +387,15 @@ export default function NegotiationPage() {
                 </svg>
               </button>
             </header>
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-10 space-y-5 bg-slate-50/50 dark:bg-slate-800/50">
-              {/* シナリオ選択: NEGOTIATION_SCENARIOS 順（メタは SCENARIO_PICKER_META で型安全に紐づけ） */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-6 space-y-6 bg-slate-100 dark:bg-slate-900/95">
+              {/* シナリオ: 同系色カード＋左アクセントのみ（全面ド派手色をやめて選択が1つと分かりやすく） */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                   <span className="w-1 h-4 rounded bg-violet-500" aria-hidden />
                   シナリオ選択
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">1つだけ選べます。色付きの縦線はシナリオ種別の目印です。</p>
+                <div className="grid grid-cols-2 gap-2.5">
                   {NEGOTIATION_SCENARIOS.map((s) => {
                     const meta = SCENARIO_PICKER_META[s.id];
                     const selected = scenarioId === s.id;
@@ -407,47 +408,70 @@ export default function NegotiationPage() {
                           setSelectScenarioHint(false);
                         }}
                         title={s.description}
-                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl px-3 py-3 min-h-[4.5rem] text-white text-sm font-medium transition shadow-md active:scale-[0.98] ${meta.buttonClass} ${selected ? 'ring-2 ring-offset-2 ring-slate-800 dark:ring-offset-slate-800' : ''}`}
+                        aria-pressed={selected}
+                        className={`group relative flex w-full flex-col items-center justify-center gap-1 rounded-xl py-3 pl-3 pr-2 min-h-[4.25rem] text-sm font-medium transition cursor-pointer select-none border active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+                          selected
+                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white border-violet-500 shadow-md ring-2 ring-violet-400/80 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-900'
+                            : 'bg-white/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-white dark:hover:bg-slate-800'
+                        }`}
                       >
-                        <svg className="w-5 h-5 shrink-0 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <span
+                          className="absolute left-0 top-2 bottom-2 w-1 rounded-r-md pointer-events-none"
+                          style={{ backgroundColor: meta.accentBg }}
+                          aria-hidden
+                        />
+                        {selected && (
+                          <span className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-white" aria-hidden>
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </span>
+                        )}
+                        <svg
+                          className={`h-5 w-5 shrink-0 ${selected ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400'}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden
+                        >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <span className="text-center leading-tight">{meta.label}</span>
+                        <span className="text-center leading-snug px-0.5">{meta.label}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
                   <span className="w-1 h-4 rounded bg-violet-500" aria-hidden />
                   難易度・役割
                 </h3>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
                     {(['easy', 'standard', 'hard'] as const).map((d) => (
                       <button
                         key={d}
                         type="button"
                         onClick={() => setDifficulty(d)}
-                        className={`rounded-xl px-4 py-2 text-sm font-medium text-white transition shadow-md ${
+                        className={`rounded-xl px-4 py-2.5 text-sm font-medium border transition shadow-sm ${
                           difficulty === d
-                            ? 'bg-violet-600 ring-2 ring-offset-2 ring-violet-400'
-                            : 'bg-slate-400 hover:bg-slate-500 dark:bg-slate-600 dark:hover:bg-slate-500'
+                            ? 'bg-violet-600 text-white border-violet-500'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
                         }`}
                       >
                         {DIFFICULTY_LABELS[d]}
                       </button>
                     ))}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => setUserRole('sales')}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition shadow-md ${
+                      className={`rounded-xl px-4 py-2.5 text-sm font-medium border transition shadow-sm ${
                         userRole === 'sales'
-                          ? 'bg-indigo-500 text-white ring-2 ring-offset-2 ring-indigo-300'
-                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500'
+                          ? 'bg-violet-600 text-white border-violet-500'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
                       }`}
                     >
                       営業側
@@ -455,10 +479,10 @@ export default function NegotiationPage() {
                     <button
                       type="button"
                       onClick={() => setUserRole('customer')}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition shadow-md ${
+                      className={`rounded-xl px-4 py-2.5 text-sm font-medium border transition shadow-sm ${
                         userRole === 'customer'
-                          ? 'bg-indigo-500 text-white ring-2 ring-offset-2 ring-indigo-300'
-                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500'
+                          ? 'bg-violet-600 text-white border-violet-500'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
                       }`}
                     >
                       顧客側
@@ -466,17 +490,17 @@ export default function NegotiationPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3 pt-1">
+              <div className="flex flex-col items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={handleStartClick}
-                  className="rounded-xl px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium shadow-md focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2"
+                  className="w-full max-w-sm rounded-xl px-6 py-3.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
                   aria-label="商談を開始"
                 >
                   商談を開始
                 </button>
                 {selectScenarioHint && (
-                  <p className="text-sm text-amber-600 dark:text-amber-400" role="alert">
+                  <p className="text-center text-sm text-amber-700 dark:text-amber-400" role="alert">
                     シナリオを選択してください
                   </p>
                 )}

@@ -344,26 +344,25 @@ export const NEGOTIATION_SCENARIOS: NegotiationScenario[] = [
 ];
 
 /**
- * 模擬商談リモコン盤のボタン表示（ScenarioId ごと必須。satisfies で漏れを防止）
- * NEGOTIATION_SCENARIOS の順で map して描画すること。
+ * 模擬商談リモコン盤のボタン表示（ScenarioId ごと必須）
+ * accentBg は左ストライプ用（シナリオ種別の目印・本番でも確実に表示）
  */
 export const SCENARIO_PICKER_META = {
-  b2b_saas: { label: 'B2B SaaS', buttonClass: 'bg-indigo-500 hover:bg-indigo-600' },
-  price_delivery: { label: '価格・納期', buttonClass: 'bg-blue-500 hover:bg-blue-600' },
-  first_visit: { label: '初回訪問', buttonClass: 'bg-emerald-500 hover:bg-emerald-600' },
-  recruitment: { label: '人材紹介', buttonClass: 'bg-violet-400 hover:bg-violet-500' },
-  media_sponsor: { label: '広告契約', buttonClass: 'bg-rose-500 hover:bg-rose-600' },
-  outsourcing: { label: '外注契約', buttonClass: 'bg-orange-500 hover:bg-orange-600' },
-  enterprise_license: { label: 'エンタープライズ', buttonClass: 'bg-purple-600 hover:bg-purple-700' },
-  renewal_contract: { label: '更新契約', buttonClass: 'bg-teal-500 hover:bg-teal-600' },
-  partnership_mou: { label: '業務提携MOU', buttonClass: 'bg-pink-500 hover:bg-pink-600' },
-  real_estate_lease: { label: '賃貸オフィス', buttonClass: 'bg-amber-500 hover:bg-amber-600' },
-  consulting_fee: { label: 'コンサル報酬', buttonClass: 'bg-sky-500 hover:bg-sky-600' },
-  maintenance_sla: { label: '保守・SLA', buttonClass: 'bg-green-600 hover:bg-green-700' },
-  core_system_schedule_delay: { label: '基幹・遅延交渉', buttonClass: 'bg-slate-600 hover:bg-slate-700' },
-  /** cyan 依存を避け fuchsia で表示（JIT 未検出・環境差での未スタイル化対策） */
-  senior_it_engineer_dispatch: { label: '高齢IT派遣', buttonClass: 'bg-fuchsia-600 hover:bg-fuchsia-700' },
-} as const satisfies Record<ScenarioId, { label: string; buttonClass: string }>;
+  b2b_saas: { label: 'B2B SaaS', accentBg: '#6366f1' },
+  price_delivery: { label: '価格・納期', accentBg: '#3b82f6' },
+  first_visit: { label: '初回訪問', accentBg: '#10b981' },
+  recruitment: { label: '人材紹介', accentBg: '#8b5cf6' },
+  media_sponsor: { label: '広告契約', accentBg: '#f43f5e' },
+  outsourcing: { label: '外注契約', accentBg: '#f97316' },
+  enterprise_license: { label: 'エンタープライズ', accentBg: '#9333ea' },
+  renewal_contract: { label: '更新契約', accentBg: '#14b8a6' },
+  partnership_mou: { label: '業務提携MOU', accentBg: '#ec4899' },
+  real_estate_lease: { label: '賃貸オフィス', accentBg: '#f59e0b' },
+  consulting_fee: { label: 'コンサル報酬', accentBg: '#0ea5e9' },
+  maintenance_sla: { label: '保守・SLA', accentBg: '#16a34a' },
+  core_system_schedule_delay: { label: '基幹・遅延交渉', accentBg: '#475569' },
+  senior_it_engineer_dispatch: { label: '高齢IT派遣', accentBg: '#c026d3' },
+} as const satisfies Record<ScenarioId, { label: string; accentBg: string }>;
 
 const DIFFICULTY_MODIFIERS: Record<Difficulty, { customer: string; sales: string }> = {
   easy: {
