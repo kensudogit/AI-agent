@@ -370,11 +370,17 @@ export default function NegotiationPage() {
               aria-labelledby="remote-modal-title"
             >
             <header className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-violet-600 text-white">
-              <h2 id="remote-modal-title" className="font-semibold flex items-center gap-2">
-                <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path d="M18 8h-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h2v2c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2zm-4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm4 6h-2v-2h2v2zm0-4h-2v-2h2v2zm0-8h-2V5h2v4z" />
-                </svg>
-                シナリオを選ぶ
+              <h2 id="remote-modal-title" className="font-semibold flex items-center gap-2.5 min-w-0">
+                <span className="shrink-0 block w-9 h-9 rounded-full ring-2 ring-white/35 bg-white/15 overflow-hidden">
+                  <img
+                    src="/PC.png"
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                </span>
+                <span className="truncate">シナリオを選ぶ</span>
               </h2>
               <button
                 type="button"
