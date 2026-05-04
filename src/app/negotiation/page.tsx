@@ -13,6 +13,7 @@ import {
   type Difficulty,
   type StructuredFeedback,
 } from '@/lib/negotiation';
+import ScenarioSimulationPanel from '@/components/ScenarioSimulationPanel';
 
 const INPUT_MAX_LENGTH = 500;
 
@@ -496,6 +497,14 @@ export default function NegotiationPage() {
                   </div>
                 </div>
               </div>
+              {scenarioId ? (
+                <ScenarioSimulationPanel
+                  key={`picker-${scenarioId}-${difficulty}-${userRole}`}
+                  scenarioId={scenarioId}
+                  userRole={userRole}
+                  difficulty={difficulty}
+                />
+              ) : null}
               <div className="flex flex-col items-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
@@ -550,6 +559,23 @@ export default function NegotiationPage() {
                 </button>
               </div>
             </div>
+
+            {scenarioId ? (
+              <details className="shrink-0 rounded-xl border border-violet-200/70 dark:border-violet-900/50 bg-violet-50/50 dark:bg-slate-800/40 px-3 py-2">
+                <summary className="cursor-pointer text-sm font-medium text-violet-900 dark:text-violet-200 select-none">
+                  シナリオ別シミュレーション（概要・AI生成）を表示
+                </summary>
+                <div className="mt-3 pb-1">
+                  <ScenarioSimulationPanel
+                    key={`session-${scenarioId}-${difficulty}-${userRole}`}
+                    scenarioId={scenarioId}
+                    userRole={userRole}
+                    difficulty={difficulty}
+                    compact
+                  />
+                </div>
+              </details>
+            ) : null}
 
             <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-inner">
               <div className="max-w-4xl mx-auto space-y-4">

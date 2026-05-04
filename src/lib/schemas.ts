@@ -67,6 +67,13 @@ export const negotiationFeedbackBodySchema = z.object({
   saveSession: z.boolean().optional(),
 });
 
+/** シナリオ別シミュレーション（AI 詳細生成）POST body */
+export const negotiationSimulationBodySchema = z.object({
+  scenarioId: scenarioIdSchema,
+  userRole: userRoleSchema,
+  difficulty: difficultySchema.optional(),
+});
+
 /** 会話作成 POST body */
 export const conversationBodySchema = z.object({
   title: z.string().max(MAX_TITLE_LENGTH).optional(),
@@ -80,4 +87,5 @@ export const conversationListQuerySchema = z.object({
 export type ChatBody = z.infer<typeof chatBodySchema>;
 export type NegotiationChatBody = z.infer<typeof negotiationChatBodySchema>;
 export type NegotiationFeedbackBody = z.infer<typeof negotiationFeedbackBodySchema>;
+export type NegotiationSimulationBody = z.infer<typeof negotiationSimulationBodySchema>;
 export type ConversationBody = z.infer<typeof conversationBodySchema>;

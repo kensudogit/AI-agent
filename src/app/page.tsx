@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, type ChangeEvent } from 'react';
 import Link from 'next/link';
 import UsageInstructionsModal from '@/components/UsageInstructionsModal';
 
@@ -10,20 +10,77 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [docLoading, setDocLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [usageModalOpen, setUsageModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  const uploadDocument = useCallback(
+    async (file: File) => {
+      if (docLoading || loading) return;
+      const instruction = input.trim();
+      setDocLoading(true);
+      const userLine = instruction
+        ? `📎 ${file.name} をアップロード（指示: ${instruction}）`
+        : `📎 ${file.name} をアップロード`;
+      setMessages((prev) => [...prev, { role: 'user', content: userLine }]);
+      setInput('');
+      scrollToBottom();
+
+      const fd = new FormData();
+      fd.append('file', file);
+      if (instruction) fd.append('instruction', instruction);
+
+      try {
+        const res = await fetch('/api/document-evaluate', { method: 'POST', body: fd });
+        const data = (await res.json().catch(() => ({}))) as { error?: string; evaluation?: string; meta?: { truncated?: boolean; extractedChars?: number } };
+        if (!res.ok) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: `ドキュメント評価エラー: ${data.error ?? res.status}` },
+          ]);
+          return;
+        }
+        const evaluation = typeof data.evaluation === 'string' ? data.evaluation : '';
+        const meta = data.meta;
+        const metaNote =
+          meta != null
+            ? `\n\n---\n（抽出テキスト: ${meta.extractedChars ?? '?'} 文字${meta.truncated ? '・長文のため一部省略あり' : ''}）`
+            : '';
+        setMessages((prev) => [...prev, { role: 'assistant', content: evaluation + metaNote }]);
+      } catch (e) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: `Network error: ${e instanceof Error ? e.message : 'Unknown'}` },
+        ]);
+      } finally {
+        setDocLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        scrollToBottom();
+      }
+    },
+    [docLoading, loading, input, scrollToBottom]
+  );
+
+  const onDocumentSelected = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) void uploadDocument(file);
+    },
+    [uploadDocument]
+  );
+
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || loading) return;
+      if (!trimmed || loading || docLoading) return;
 
       setInput('');
       setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
@@ -113,7 +170,7 @@ export default function Home() {
         scrollToBottom();
       }
     },
-    [loading, messages, conversationId, scrollToBottom]
+    [loading, docLoading, messages, conversationId, scrollToBottom]
   );
 
   const startVoice = useCallback(() => {
@@ -191,8 +248,8 @@ export default function Home() {
           <div className="max-w-4xl mx-auto">
             {messages.length === 0 && (
               <div className="text-center text-slate-500 dark:text-slate-400 py-16">
-                <p className="text-base">メッセージを入力するか、マイクボタンで話しかけてください。</p>
-                <p className="text-sm mt-2">例: 「今何時？」「3+5を計算して」</p>
+                <p className="text-base">メッセージを入力するか、マイク・クリップ（PDF/Excel）でアップロードしてください。</p>
+                <p className="text-sm mt-2">例: 「今何時？」「3+5を計算して」／ PDF・Excel は評価の観点を入力してから 📎 で選択</p>
               </div>
             )}
             <div className="space-y-4">
@@ -210,9 +267,11 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-              {loading && (
+              {(loading || docLoading) && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl px-5 py-3 bg-slate-200 dark:bg-slate-700 animate-pulse text-slate-500">...</div>
+                  <div className="rounded-2xl px-5 py-3 bg-slate-200 dark:bg-slate-700 animate-pulse text-slate-500">
+                    {docLoading ? 'ドキュメントを評価中…' : '...'}
+                  </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -224,6 +283,27 @@ export default function Home() {
       <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/95">
         <div className="w-full max-w-[1600px] mx-auto px-4 py-4">
           <div className="max-w-4xl mx-auto flex gap-2 items-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              className="hidden"
+              aria-hidden
+              tabIndex={-1}
+              onChange={onDocumentSelected}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || docLoading}
+              className="p-3 rounded-xl shrink-0 bg-slate-200 dark:bg-slate-700 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="PDF / Excel をアップロードして評価"
+              aria-label="PDF または Excel をアップロード"
+            >
+              <svg className="w-6 h-6 text-slate-700 dark:text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+            </button>
             <button
               type="button"
               onClick={isListening ? stopVoice : startVoice}
@@ -243,12 +323,12 @@ export default function Home() {
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
               placeholder="メッセージを入力…"
               className="flex-1 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
+              disabled={loading || docLoading}
             />
             <button
               type="button"
               onClick={() => sendMessage(input)}
-              disabled={loading || !input.trim()}
+              disabled={loading || docLoading || !input.trim()}
               className="px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
               送信

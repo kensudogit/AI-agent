@@ -22,3 +22,9 @@ export const MAX_CALC_EXPRESSION_LENGTH = 200;
 
 /** 会話一覧・セッション一覧の取得件数上限 */
 export const MAX_LIST_LIMIT = 100;
+
+/** チャットにアップロード可能なドキュメントの最大バイト数（PDF / Excel） */
+export const MAX_DOCUMENT_UPLOAD_BYTES = 15 * 1024 * 1024;
+
+/** ドキュメントから抽出してモデルに渡すテキストの最大文字数（トークン上限対策） */
+export const MAX_DOCUMENT_EXTRACT_CHARS = 100_000;

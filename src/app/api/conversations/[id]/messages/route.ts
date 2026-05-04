@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiError } from '@/lib/api';
+import { isNextProductionBuild } from '@/lib/next-build';
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (isNextProductionBuild()) {
+    return NextResponse.json([]);
+  }
   try {
     const { id } = await params;
     if (!id) {

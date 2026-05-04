@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { apiError } from '@/lib/api';
 import { MAX_LIST_LIMIT } from '@/lib/constants';
+import { isNextProductionBuild } from '@/lib/next-build';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
+  if (isNextProductionBuild()) {
+    return NextResponse.json([]);
+  }
   try {
     const limit = Math.min(50, MAX_LIST_LIMIT);
     const { rows } = await query<{
