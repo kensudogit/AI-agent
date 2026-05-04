@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
@@ -13,9 +13,12 @@ import {
   type Difficulty,
   type StructuredFeedback,
 } from '@/lib/negotiation';
+import { MAX_NEGOTIATION_INPUT_LENGTH } from '@/lib/constants';
 import ScenarioSimulationPanel from '@/components/ScenarioSimulationPanel';
+import NegotiationFocusStrip from '@/components/NegotiationFocusStrip';
+import NegotiationPrepPanel from '@/components/NegotiationPrepPanel';
 
-const INPUT_MAX_LENGTH = 500;
+const INPUT_MAX_LENGTH = MAX_NEGOTIATION_INPUT_LENGTH;
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -58,6 +61,7 @@ export default function NegotiationPage() {
   const [selectScenarioHint, setSelectScenarioHint] = useState(false);
   /** SSR 後のみ Portal 可能（モーダルを body 直下に出してクリック被りを防ぐ） */
   const [mounted, setMounted] = useState(false);
+  const [copyHint, setCopyHint] = useState<string | null>(null);
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -85,6 +89,10 @@ export default function NegotiationPage() {
   useEffect(() => {
     if (started && !timerRef.current) {
       timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+    }
+    if (!started && timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
     return () => {
       if (timerRef.current) {
@@ -125,13 +133,57 @@ export default function NegotiationPage() {
   }, [scenarioId, userRole, scrollToBottom]);
 
   const handleStartClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+    (e: MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
       startSession();
     },
     [startSession]
   );
+
+  const showCopyHint = useCallback((msg: string) => {
+    setCopyHint(msg);
+    window.setTimeout(() => setCopyHint(null), 2000);
+  }, []);
+
+  const copyText = useCallback(
+    async (text: string, label: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        showCopyHint(`${label}をコピーしました`);
+      } catch {
+        showCopyHint('コピーできませんでした');
+      }
+    },
+    [showCopyHint]
+  );
+
+  const copyTranscript = useCallback(async () => {
+    if (messages.length === 0 || !scenarioId) return;
+    const sc = NEGOTIATION_SCENARIOS.find((s) => s.id === scenarioId);
+    if (!sc) return;
+    const body = messages
+      .map((m) => `${m.role === 'user' ? '【あなた】' : '【AI相手役】'}\n${m.content}`)
+      .join('\n\n—\n\n');
+    const header = `模擬商談ログ\nシナリオ: ${sc.title}\n役割: ${userRole === 'sales' ? '営業' : '顧客'} · 難易度: ${DIFFICULTY_LABELS[difficulty]}\n経過: ${formatElapsed(elapsed)}\n\n----------\n\n`;
+    await copyText(header + body, '会話ログ');
+  }, [messages, scenarioId, userRole, difficulty, elapsed, copyText]);
+
+  const copyFeedbackBlock = useCallback(async () => {
+    if (!feedback) return;
+    const lines: string[] = ['=== 模擬商談フィードバック ==='];
+    if (feedback.overall_score != null) lines.push(`総合: ★${feedback.overall_score}/5`);
+    if (feedback.good_points.length) {
+      lines.push('\n良かった点:');
+      feedback.good_points.forEach((p) => lines.push(`・${p}`));
+    }
+    if (feedback.improve_points.length) {
+      lines.push('\n改善点:');
+      feedback.improve_points.forEach((p) => lines.push(`・${p}`));
+    }
+    if (feedback.advice) lines.push(`\nアドバイス:\n${feedback.advice}`);
+    await copyText(lines.join('\n'), 'フィードバック');
+  }, [feedback, copyText]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -300,7 +352,7 @@ export default function NegotiationPage() {
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-slate-900 dark:text-white truncate">模擬商談</h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                実践的な商談シミュレーション — シナリオ・難易度・役割を選んで開始
+                本番想定：論点・メモを常に表示 / 長文OK / 会話をコピーして振り返りに使えます
               </p>
             </div>
           </div>
@@ -528,20 +580,45 @@ export default function NegotiationPage() {
       <main
         className={`flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-4 pb-4 flex flex-col gap-3${remoteModalOpen ? ' pointer-events-none' : ''}`}
       >
+        {copyHint ? (
+          <div
+            className="fixed bottom-24 left-1/2 z-[900] -translate-x-1/2 rounded-lg bg-slate-900 text-white text-sm px-4 py-2 shadow-lg pointer-events-none max-w-[90vw] text-center"
+            role="status"
+            aria-live="polite"
+          >
+            {copyHint}
+          </div>
+        ) : null}
+
         {!started ? (
           <div className="flex-1 flex items-center justify-center py-12 text-center">
-            <div className="max-w-md text-slate-500 dark:text-slate-400">
-              <p className="text-base">ヘッダーの「シナリオを選ぶ」でモーダルを開き、シナリオ・難易度・役割を選んで「商談を開始」を押してください。</p>
-              <p className="text-sm mt-2">開始後、チャットエリアでAIが相手役として応答します。</p>
+            <div className="max-w-lg text-slate-500 dark:text-slate-400 space-y-3">
+              <p className="text-base">
+                「シナリオを選ぶ」でテーマ・難易度・役割を決め、商談を開始してください。
+              </p>
+              <ul className="text-sm text-left list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400">
+                <li>開始後は<strong className="font-medium text-slate-700 dark:text-slate-300">論点チップ</strong>と<strong className="font-medium text-slate-700 dark:text-slate-300">準備メモ</strong>で本番に近い状態で練習できます</li>
+                <li>入力は<strong className="font-medium text-slate-700 dark:text-slate-300">2000文字まで</strong>（Enter 送信 / Shift+Enter 改行）</li>
+                <li>終了後にフィードバック取得・会話のコピーで振り返りに活用できます</li>
+              </ul>
             </div>
           </div>
         ) : (
           <>
             <div className="shrink-0 flex items-center justify-between flex-wrap gap-2 text-sm">
-              <span className="text-slate-600 dark:text-slate-400">
+              <span className="text-slate-600 dark:text-slate-400 min-w-0">
                 {scenario?.title} — {roleLabel} {opponentLabel} · {DIFFICULTY_LABELS[difficulty]} · 経過 {formatElapsed(elapsed)}
               </span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => void copyTranscript()}
+                  disabled={messages.length === 0}
+                  className="text-sm px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40"
+                  title="メールや議事メモに貼り付け可能な形式"
+                >
+                  会話をコピー
+                </button>
                 <button
                   type="button"
                   onClick={endSession}
@@ -559,6 +636,9 @@ export default function NegotiationPage() {
                 </button>
               </div>
             </div>
+
+            {scenarioId ? <NegotiationPrepPanel /> : null}
+            {scenarioId ? <NegotiationFocusStrip scenarioId={scenarioId} /> : null}
 
             {scenarioId ? (
               <details className="shrink-0 rounded-xl border border-violet-200/70 dark:border-violet-900/50 bg-violet-50/50 dark:bg-slate-800/40 px-3 py-2">
@@ -580,15 +660,28 @@ export default function NegotiationPage() {
             <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-inner">
               <div className="max-w-4xl mx-auto space-y-4">
                 {messages.map((m, i) => (
-                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div
-                      className={`rounded-2xl px-5 py-3 max-w-[88%] text-base leading-relaxed ${
+                      className={`rounded-2xl px-5 py-3 max-w-[min(88%,42rem)] text-base leading-relaxed ${
                         m.role === 'user'
                           ? 'bg-blue-600 text-white'
                           : 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100'
                       }`}
                     >
-                      <span className="text-xs opacity-80 block mb-1">{m.role === 'user' ? 'あなた' : 'AI'}</span>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-xs opacity-80">{m.role === 'user' ? 'あなた' : 'AI（相手役）'}</span>
+                        <button
+                          type="button"
+                          onClick={() => void copyText(m.content, m.role === 'user' ? '発言' : '相手の発言')}
+                          className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded border ${
+                            m.role === 'user'
+                              ? 'border-blue-300/50 text-blue-100 hover:bg-blue-500/30'
+                              : 'border-slate-400/40 text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-600/50'
+                          }`}
+                        >
+                          コピー
+                        </button>
+                      </div>
                       <p className="whitespace-pre-wrap">{m.content}</p>
                     </div>
                   </div>
@@ -604,11 +697,20 @@ export default function NegotiationPage() {
 
             {feedback && (
               <div className="shrink-0 p-5 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 space-y-3">
-                <div>
-                  <h3 className="font-semibold text-green-900 dark:text-green-100">フィードバック（厳格・辛辣モード）</h3>
-                  <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-1">
-                    忖度のない講評です。スコア・指摘は意図的に厳しめに付けています。
-                  </p>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-semibold text-green-900 dark:text-green-100">フィードバック（厳格・辛辣モード）</h3>
+                    <p className="text-xs text-amber-800 dark:text-amber-200/90 mt-1">
+                      忖度のない講評です。スコア・指摘は意図的に厳しめに付けています。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void copyFeedbackBlock()}
+                    className="text-sm shrink-0 px-3 py-1.5 rounded-lg border border-green-700/30 dark:border-green-400/30 text-green-900 dark:text-green-100 hover:bg-green-100/80 dark:hover:bg-green-900/40"
+                  >
+                    フィードバックをコピー
+                  </button>
                 </div>
                 {feedback.overall_score != null && (
                   <p className="text-sm text-green-800 dark:text-green-200">
@@ -643,19 +745,29 @@ export default function NegotiationPage() {
               </div>
             )}
 
-            <div className="shrink-0 flex gap-2 items-end">
+            <div className="shrink-0 flex flex-col gap-1.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 px-0.5">
+                Enter で送信 · Shift+Enter で改行 · 最大 {INPUT_MAX_LENGTH} 文字（実務に近い長さで練習できます）
+              </p>
+              <div className="flex gap-2 items-end">
               <div className="flex-1 relative">
-                <input
-                  type="text"
+                <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value.slice(0, INPUT_MAX_LENGTH))}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-                  placeholder="メッセージを入力（最大500文字）…"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendMessage(input);
+                    }
+                  }}
+                  placeholder="相手の発言への返答を入力…"
+                  rows={3}
                   maxLength={INPUT_MAX_LENGTH}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 pr-16 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full min-h-[5.5rem] rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-3 pr-14 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y max-h-60"
                   disabled={loading}
+                  spellCheck
                 />
-                <span className="absolute right-3 bottom-2.5 text-xs text-slate-400">
+                <span className="absolute right-3 bottom-2.5 text-xs text-slate-400 tabular-nums">
                   {input.length}/{INPUT_MAX_LENGTH}
                 </span>
               </div>
@@ -672,12 +784,13 @@ export default function NegotiationPage() {
               </button>
               <button
                 type="button"
-                onClick={() => sendMessage(input)}
+                onClick={() => void sendMessage(input)}
                 disabled={loading || !input.trim()}
-                className="px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 shrink-0"
+                className="px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 shrink-0 min-h-[44px] self-stretch sm:self-auto"
               >
                 送信
               </button>
+            </div>
             </div>
           </>
         )}
