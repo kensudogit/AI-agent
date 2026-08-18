@@ -1,16 +1,15 @@
 import { NextRequest } from 'next/server';
-import type Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { getScenario } from '@/lib/negotiation';
 import { getScenarioSimulationStatic } from '@/lib/scenarioSimulation';
 import { negotiationSimulationBodySchema } from '@/lib/schemas';
-import { apiError, parseJsonBody, validationError } from '@/lib/api';
-import { CLAUDE_MODEL, getAnthropic, isAnthropicConfigured, toApiError } from '@/lib/anthropic';
+import { apiError, parseJsonBody, validationError, openaiStatusToHttp } from '@/lib/api';
 import type { Difficulty, UserRole } from '@/lib/negotiation';
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
+
 export const runtime = 'nodejs';
-// 実測: 5000 字程度の生成に約 100 秒。出力トークン生成が支配的で、
-// effort を low に落としても約 80 秒までしか縮まらないため上限を引き上げる。
-export const maxDuration = 300;
+export const maxDuration = 90;
 
 const DIFF_LABEL: Record<Difficulty, string> = {
   easy: '易：相手は比較的協力的で譲歩しやすい。',
@@ -37,8 +36,8 @@ export async function POST(req: NextRequest) {
 
     const { scenarioId, userRole, difficulty = 'standard' } = parseResult.data;
 
-    if (!isAnthropicConfigured()) {
-      return apiError('ANTHROPIC_API_KEY not configured', 503);
+    if (!process.env.OPENAI_API_KEY) {
+      return apiError('OPENAI_API_KEY not configured', 503);
     }
 
     const scenario = getScenario(scenarioId);
@@ -75,21 +74,22 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     try {
-      // max_tokens は「思考 + 本文」の合計上限。対話例を 8〜12 ターン出すため十分に確保する。
-      const completion = await getAnthropic().messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: 16000,
-        system:
-          'あなたは日本の営業・商談研修のファシリテーターです。指定された条件だけに基づき、実務に即した模擬商談シミュレーションを出力します。憶測で会社名や実在サービス名を捏造しないでください。',
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'medium' },
-        messages: [{ role: 'user', content: userPayload }],
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'あなたは日本の営業・商談研修のファシリテーターです。指定された条件だけに基づき、実務に即した模擬商談シミュレーションを出力します。憶測で会社名や実在サービス名を捏造しないでください。',
+          },
+          { role: 'user', content: userPayload },
+        ],
+        max_tokens: 4_096,
+        temperature: 0.65,
       });
 
       const text =
-        completion.content
-          .find((b): b is Anthropic.TextBlock => b.type === 'text')
-          ?.text.trim() ||
+        completion.choices[0]?.message?.content?.trim() ||
         'シミュレーションの生成に失敗しました。';
 
       return Response.json({
@@ -97,8 +97,11 @@ export async function POST(req: NextRequest) {
         scenarioTitle: scenario.title,
       });
     } catch (apiErr: unknown) {
-      const { message, status } = toApiError(apiErr);
-      return apiError(message, status);
+      const status = (apiErr as { status?: number })?.status;
+      return apiError(
+        apiErr instanceof Error ? apiErr.message : 'OpenAI API error',
+        openaiStatusToHttp(status)
+      );
     }
   } catch (err) {
     console.error('negotiation simulation API:', err);

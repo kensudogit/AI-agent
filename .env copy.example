@@ -8,7 +8,6 @@ DATABASE_URL=postgresql://user:password@localhost:5432/ai_agent
 # DB_PASSWORD=postgres
 # DATABASE_SSL=false
 
-# Anthropic Claude（ストリーミングチャット・ツール実行用）
-ANTHROPIC_API_KEY=sk-ant-...
-# 省略時は claude-opus-5
-# ANTHROPIC_MODEL=claude-opus-5
+# OpenAI（ストリーミングチャット・ツール実行用）
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini

@@ -1,33 +1,15 @@
-import { NextRequest } from 'next/server';
-import type Anthropic from '@anthropic-ai/sdk';
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
 import { query } from '@/lib/db';
 import { AGENT_TOOLS, runTool } from '@/lib/tools';
 import { chatBodySchema, type ChatBody } from '@/lib/schemas';
-import { apiError, validationError, parseJsonBody } from '@/lib/api';
-import {
-  CLAUDE_MODEL,
-  getAnthropic,
-  isAnthropicConfigured,
-  openMessageStream,
-  splitSystemMessages,
-  toApiError,
-} from '@/lib/anthropic';
+import { apiError, badRequest, validationError, parseJsonBody, openaiStatusToHttp } from '@/lib/api';
+import type { Message } from '@/types/agent';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-/** ツール実行 → 再問い合わせを繰り返す上限（暴走防止） */
-const MAX_TOOL_ROUNDS = 4;
-
-const REFUSAL_NOTICE = '\n\n（この内容には応答できませんでした。表現を変えて再度お試しください。）';
-
-/**
- * 既定のシステムプロンプト。旧実装には system が無く、応答言語がモデル任せだった
- * （Claude では前置きが英語になることがある）。日本語と簡潔さを明示する。
- */
-const DEFAULT_SYSTEM = `あなたは日本語で応答するアシスタントです。ユーザーが他の言語で書いた場合を除き、前置きも含めて必ず日本語で答えてください。
-
-回答は簡潔にまとめ、不要な前置き・復唱・自己言及は書かないこと。ツールを使う場合は、実行前の宣言は不要です。結果を踏まえた答えだけを返してください。`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,126 +22,105 @@ export async function POST(req: NextRequest) {
     }
     const { messages, conversationId } = parseResult.data;
 
-    if (!isAnthropicConfigured()) {
-      return apiError('ANTHROPIC_API_KEY not configured', 503);
+    if (!process.env.OPENAI_API_KEY) {
+      return apiError('OPENAI_API_KEY not configured', 503);
     }
 
-    // Claude では system は messages ではなくトップレベルのパラメータ
-    const { system: clientSystem, messages: initialMessages } = splitSystemMessages(messages);
-    const system = clientSystem ? `${DEFAULT_SYSTEM}\n\n${clientSystem}` : DEFAULT_SYSTEM;
-    if (initialMessages.length === 0) {
-      return apiError('user メッセージが必要です', 400);
-    }
+    const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map((m) => {
+      const obj: Record<string, unknown> = {
+        role: m.role,
+        content: m.content,
+      };
+      if (m.tool_calls) obj.tool_calls = m.tool_calls;
+      if (m.tool_call_id) obj.tool_call_id = m.tool_call_id;
+      return obj as unknown as OpenAI.Chat.ChatCompletionMessageParam;
+    });
 
-    const client = getAnthropic();
-    const baseParams = {
-      model: CLAUDE_MODEL,
-      max_tokens: 16000,
-      // claude-opus-5 は思考がデフォルト ON。thinking を無効化するとツール呼び出しが
-      // 本文テキストとして出力される既知の不具合があるため、effort で深さを調整する。
-      thinking: { type: 'adaptive' as const },
-      output_config: { effort: 'medium' as const },
-      system,
-      ...(AGENT_TOOLS.length > 0 ? { tools: AGENT_TOOLS } : {}),
-    };
-
-    const convo: Anthropic.MessageParam[] = [...initialMessages];
-
-    // 最初のイベントまで進めておくことで、401/429 などを HTTP ステータスとして返せる
-    let opened;
+    let stream: Awaited<ReturnType<typeof openai.chat.completions.create>>;
     try {
-      opened = await openMessageStream({ ...baseParams, messages: convo });
+      stream = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: openaiMessages,
+        stream: true,
+        tools: AGENT_TOOLS.length > 0 ? AGENT_TOOLS : undefined,
+      });
     } catch (apiErr: unknown) {
-      const { message, status } = toApiError(apiErr);
-      return apiError(message, status);
+      const status = (apiErr as { status?: number })?.status;
+      const code = openaiStatusToHttp(status);
+      return apiError(apiErr instanceof Error ? apiErr.message : 'OpenAI API error', code);
     }
 
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        const send = (kind: '0' | '1' | 'e', payload: unknown) =>
-          controller.enqueue(encoder.encode(`${kind}${JSON.stringify(payload)}\n`));
-
         let fullContent = '';
-
-        /** ストリームイベントを消費し、text_delta だけをクライアントへ流す */
-        const consume = async (
-          iterator: AsyncIterator<Anthropic.MessageStreamEvent>,
-          firstResult?: IteratorResult<Anthropic.MessageStreamEvent>
-        ) => {
-          let result = firstResult ?? (await iterator.next());
-          while (!result.done) {
-            const event = result.value;
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              fullContent += event.delta.text;
-              send('0', { content: event.delta.text });
-            }
-            result = await iterator.next();
-          }
-        };
+        let toolCalls: { id: string; name: string; args: string }[] = [];
+        let currentTool = { id: '', name: '', args: '' };
 
         try {
-          let stream = opened.stream;
-          await consume(opened.iterator, opened.first);
-          let message = await stream.finalMessage();
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta;
+          if (!delta) continue;
 
-          // ツールが呼ばれた場合は実行結果を返して会話を続ける（エージェントループ）
-          for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-            if (message.stop_reason !== 'tool_use') break;
-
-            // thinking ブロックを含む content をそのまま履歴へ戻す（改変不可）
-            convo.push({ role: 'assistant', content: message.content });
-
-            const toolResults: Anthropic.ToolResultBlockParam[] = [];
-            for (const block of message.content) {
-              if (block.type !== 'tool_use') continue;
-              const result = await runTool(
-                block.name,
-                (block.input ?? {}) as Record<string, unknown>
-              );
-              send('1', { tool: block.name, result });
-              toolResults.push({
-                type: 'tool_result',
-                tool_use_id: block.id,
-                content: result,
-              });
+          if (delta.content) {
+            fullContent += delta.content;
+            controller.enqueue(encoder.encode(`0${JSON.stringify({ content: delta.content })}\n`));
+          }
+          if (delta.tool_calls?.length) {
+            for (const tc of delta.tool_calls) {
+              if (tc.id) currentTool.id = tc.id;
+              if (tc.function?.name) currentTool.name = tc.function.name;
+              if (tc.function?.arguments) currentTool.args += tc.function.arguments;
+              if (tc.id && tc.function?.name) {
+                toolCalls.push({ ...currentTool });
+                currentTool = { id: '', name: '', args: '' };
+              }
             }
-            if (toolResults.length === 0) break;
-
-            convo.push({ role: 'user', content: toolResults });
-
-            stream = client.messages.stream({ ...baseParams, messages: convo });
-            await consume(stream[Symbol.asyncIterator]());
-            message = await stream.finalMessage();
           }
+        }
 
-          // 安全性判定で拒否された場合、content は空になり得る。無言で終わらせない。
-          if (message.stop_reason === 'refusal') {
-            fullContent += REFUSAL_NOTICE;
-            send('0', { content: REFUSAL_NOTICE });
-          }
-
-          if (conversationId) {
+        if (toolCalls.length > 0) {
+          const seen = new Set<string>();
+          for (const tc of toolCalls) {
+            if (tc.id && seen.has(tc.id)) continue;
+            if (tc.id) seen.add(tc.id);
+            let args: Record<string, unknown> = {};
             try {
-              await query(
-                'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
-                [conversationId, 'user', messages[messages.length - 1]?.content ?? '']
-              );
-              await query(
-                'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
-                [conversationId, 'assistant', fullContent]
-              );
-              await query('UPDATE conversations SET updated_at = NOW() WHERE id = $1', [
-                conversationId,
-              ]);
-            } catch (dbErr) {
-              console.error('Chat DB persistence error:', dbErr);
-              // 永続化失敗してもストリームは成功として返す
+              args = tc.args ? JSON.parse(tc.args) : {};
+            } catch {
+              args = { expression: tc.args };
             }
+            const result = await runTool(tc.name, args);
+            controller.enqueue(
+              encoder.encode(`1${JSON.stringify({ tool: tc.name, result })}\n`)
+            );
           }
+        }
+
+        if (conversationId) {
+          try {
+            await query(
+              'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
+              [conversationId, 'user', messages[messages.length - 1]?.content ?? '']
+            );
+            await query(
+              'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)',
+              [conversationId, 'assistant', fullContent]
+            );
+            await query(
+              'UPDATE conversations SET updated_at = NOW() WHERE id = $1',
+              [conversationId]
+            );
+          } catch (dbErr) {
+            console.error('Chat DB persistence error:', dbErr);
+            // 永続化失敗してもストリームは成功として返す
+          }
+        }
         } catch (streamErr) {
           console.error('Chat stream error:', streamErr);
-          send('e', { error: toApiError(streamErr, 'Stream error').message });
+          controller.enqueue(
+            encoder.encode(`e${JSON.stringify({ error: streamErr instanceof Error ? streamErr.message : 'Stream error' })}\n`)
+          );
         }
         controller.close();
       },

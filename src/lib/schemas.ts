@@ -15,6 +15,8 @@ const contentString = z.string().max(MAX_MESSAGE_CONTENT_LENGTH);
 const chatMessageSchema = z.object({
   role: roleEnum,
   content: contentString,
+  tool_calls: z.unknown().optional(),
+  tool_call_id: z.string().optional(),
 });
 
 /** チャット POST body（conversationId は未設定時に null が送られることがある） */
