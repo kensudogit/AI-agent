@@ -18,14 +18,6 @@ export function badRequest(message: string = 'Invalid JSON body') {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
-/** OpenAI API エラーから HTTP ステータスを決める */
-export function openaiStatusToHttp(status: number | undefined): number {
-  if (status === 401) return 401;
-  if (status === 429) return 429;
-  if (status === 400) return 400;
-  return 502;
-}
-
 /** 安全に JSON body を取得。失敗時は null とレスポンスのどちらか */
 export async function parseJsonBody<T>(req: Request): Promise<{ ok: true; data: unknown } | { ok: false; response: NextResponse }> {
   try {

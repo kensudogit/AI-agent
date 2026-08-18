@@ -224,9 +224,17 @@ export default function NegotiationPage() {
           if (done) break;
           const lines = decoder.decode(value, { stream: true }).split('\n');
           for (const line of lines) {
-            if (!line.trim() || line[0] !== '0') continue;
+            if (!line.trim() || (line[0] !== '0' && line[0] !== 'e')) continue;
             try {
               const data = JSON.parse(line.slice(1));
+              if (line[0] === 'e' && data.error) {
+                setMessages((prev) => [
+                  ...prev,
+                  { role: 'assistant', content: `エラー: ${data.error}` },
+                ]);
+                scrollToBottom();
+                continue;
+              }
               if (data.content) {
                 setMessages((prev) => {
                   const next = [...prev];

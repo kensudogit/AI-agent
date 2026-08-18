@@ -143,6 +143,13 @@ export default function Home() {
                 ]);
                 scrollToBottom();
               }
+              if (kind === 'e' && data.error) {
+                setMessages((prev) => [
+                  ...prev,
+                  { role: 'assistant', content: `エラー: ${data.error}` },
+                ]);
+                scrollToBottom();
+              }
             } catch {
               // skip invalid lines
             }

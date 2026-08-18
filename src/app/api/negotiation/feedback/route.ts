@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import type Anthropic from '@anthropic-ai/sdk';
 import { query } from '@/lib/db';
 import { getScenario, type StructuredFeedback } from '@/lib/negotiation';
 import { negotiationFeedbackBodySchema } from '@/lib/schemas';
-import { apiError, parseJsonBody, validationError, openaiStatusToHttp } from '@/lib/api';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
+import { apiError, parseJsonBody, validationError } from '@/lib/api';
+import { CLAUDE_MODEL, getAnthropic, isAnthropicConfigured, toApiError } from '@/lib/anthropic';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 60;
+
+/**
+ * 構造化出力（output_config.format）でフィードバックの JSON 形状を保証する。
+ * 数値・文字列長の制約（minimum / minItems など）は未対応のため、
+ * 件数やスコア基準はシステムプロンプト側で指示する。
+ */
+const FEEDBACK_SCHEMA = {
+  type: 'object',
+  properties: {
+    good_points: { type: 'array', items: { type: 'string' } },
+    improve_points: { type: 'array', items: { type: 'string' } },
+    advice: { type: 'string' },
+    overall_score: { type: 'integer', enum: [1, 2, 3, 4, 5] },
+  },
+  required: ['good_points', 'improve_points', 'advice', 'overall_score'],
+  additionalProperties: false,
+} as const;
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,8 +37,8 @@ export async function POST(req: NextRequest) {
     }
     const { messages, scenarioId, userRole, difficulty = 'standard', saveSession = true } = parseResult.data;
 
-    if (!process.env.OPENAI_API_KEY) {
-      return apiError('OPENAI_API_KEY not configured', 503);
+    if (!isAnthropicConfigured()) {
+      return apiError('ANTHROPIC_API_KEY not configured', 503);
     }
 
     const scenario = getScenario(scenarioId);
@@ -59,22 +75,37 @@ overall_score は会話内容から上記基準で決定すること。固定値
 - ユーザー役割: ${roleLabel}
 - 難易度設定: ${difficulty}（難易度に関わらず上記の厳格基準は変えない）`;
 
-    let completion: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    let raw = '';
     try {
-      completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      const completion = await getAnthropic().messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 8000,
+        system: systemPrompt,
+        thinking: { type: 'adaptive' },
+        // 採点の一貫性を重視するので effort は高め。format で JSON 形状を保証する。
+        output_config: {
+          effort: 'high',
+          format: { type: 'json_schema', schema: FEEDBACK_SCHEMA },
+        },
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `以下の模擬商談ログを分析し、指定のJSON形式でフィードバックを出力してください。\n\n${log}` },
+          {
+            role: 'user',
+            content: `以下の模擬商談ログを分析し、指定のJSON形式でフィードバックを出力してください。
+
+${log}`,
+          },
         ],
-        temperature: 0.25,
       });
+
+      raw =
+        completion.content
+          .find((b): b is Anthropic.TextBlock => b.type === 'text')
+          ?.text.trim() ?? '';
     } catch (apiErr: unknown) {
-      const status = (apiErr as { status?: number })?.status;
-      return apiError(apiErr instanceof Error ? apiErr.message : 'OpenAI API error', openaiStatusToHttp(status));
+      const { message, status } = toApiError(apiErr);
+      return apiError(message, status);
     }
 
-    const raw = completion.choices[0]?.message?.content?.trim() ?? '';
     let structured: StructuredFeedback = {
       good_points: [],
       improve_points: [],
@@ -82,10 +113,11 @@ overall_score は会話内容から上記基準で決定すること。固定値
       raw,
     };
 
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+    // format 指定により raw はそのまま JSON のはず。念のため従来のフォールバックも残す。
+    const jsonText = raw.startsWith('{') ? raw : (raw.match(/\{[\s\S]*\}/)?.[0] ?? '');
+    if (jsonText) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]) as {
+        const parsed = JSON.parse(jsonText) as {
           good_points?: string[];
           improve_points?: string[];
           advice?: string;
@@ -96,7 +128,9 @@ overall_score は会話内容から上記基準で決定すること。固定値
           improve_points: Array.isArray(parsed.improve_points) ? parsed.improve_points : [],
           advice: typeof parsed.advice === 'string' ? parsed.advice : structured.advice,
           overall_score:
-            typeof parsed.overall_score === 'number' && parsed.overall_score >= 1 && parsed.overall_score <= 5
+            typeof parsed.overall_score === 'number' &&
+            parsed.overall_score >= 1 &&
+            parsed.overall_score <= 5
               ? parsed.overall_score
               : undefined,
           raw,

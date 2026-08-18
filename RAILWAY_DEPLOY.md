@@ -29,7 +29,7 @@
 
 ---
 
-### ステップ 3: 環境変数（OPENAI_API_KEY）を設定
+### ステップ 3: 環境変数（ANTHROPIC_API_KEY）を設定
 
 1. 同じサービスで **Variables** タブを開く。
 2. **+ New Variable** をクリックする。
@@ -37,12 +37,12 @@
 
    | 変数名 | 値 |
    |--------|-----|
-   | `OPENAI_API_KEY` | OpenAI の API キー（`sk-...`） |
-   | `OPENAI_MODEL`（任意） | `gpt-4o-mini` など |
+   | `ANTHROPIC_API_KEY` | Anthropic の API キー（`sk-ant-...`） |
+   | `ANTHROPIC_MODEL`（任意） | `claude-opus-5` など |
 
 4. 保存すると多くの場合 **自動で再デプロイ**される。されない場合は **Deployments** から **Redeploy** する。
 
-これで **完全公開モード** かつ **OPENAI_API_KEY が利用可能**な状態になります。
+これで **完全公開モード** かつ **ANTHROPIC_API_KEY が利用可能**な状態になります。
 
 ---
 
@@ -50,7 +50,7 @@
 
 1. ステップ 2 で発行した **公開 URL** をブラウザで開く。
 2. トップページや **/negotiation**（模擬商談）が表示されれば成功。
-3. チャットでメッセージを送り、AI が返答すれば OPENAI_API_KEY も有効です。
+3. チャットでメッセージを送り、AI が返答すれば ANTHROPIC_API_KEY も有効です。
 
 ---
 
@@ -68,7 +68,7 @@
 
 ---
 
-## 3. OPENAI_API_KEY を設定する（ここで有効にする）
+## 3. ANTHROPIC_API_KEY を設定する（ここで有効にする）
 
 1. Railway のダッシュボードで、デプロイした **サービス（AI Agent のサービス）** をクリックする。
 2. 上部の **Variables** タブを開く。
@@ -77,13 +77,13 @@
 
    | 変数名 | 値 | 説明 |
    |--------|-----|------|
-   | `OPENAI_API_KEY` | `sk-...`（OpenAI で発行した API キー） | **必須**。チャット・模擬商談で利用。 |
-   | `OPENAI_MODEL` | `gpt-4o-mini` など | 任意。未設定時は `gpt-4o-mini`。 |
+   | `ANTHROPIC_API_KEY` | `sk-ant-...`（Anthropic Console で発行した API キー） | **必須**。チャット・模擬商談で利用。 |
+   | `ANTHROPIC_MODEL` | `claude-opus-5` など | 任意。未設定時は `claude-opus-5`。 |
 
 5. **Add** で保存する。
 6. 変数を追加・変更すると、多くの場合 **再デプロイ** が自動で走る。走らない場合は **Deployments** から **Redeploy** する。
 
-これで **OPENAI_API_KEY が Railway 上で利用可能**になります。コードではすでに `process.env.OPENAI_API_KEY` を参照しているため、追加のコード変更は不要です。
+これで **ANTHROPIC_API_KEY が Railway 上で利用可能**になります。コードではすでに `process.env.ANTHROPIC_API_KEY` を参照しているため、追加のコード変更は不要です。
 
 ---
 
@@ -112,10 +112,10 @@
 
 2. **デプロイログ**
    - Railway の **Deployments** → 該当デプロイを開き、**View Logs** で起動ログを確認する。
-   - 「Error」「ECONNREFUSED」「OPENAI」「DATABASE」などで検索し、起動失敗や API/DB エラーが出ていないか見る。
+   - 「Error」「ECONNREFUSED」「ANTHROPIC」「DATABASE」などで検索し、起動失敗や API/DB エラーが出ていないか見る。
 
 3. **環境変数**
-   - **OPENAI_API_KEY**: 誤字・欠け（先頭の `sk-` など）がないか確認。無効・期限切れキーだと 401 になり、アプリは 401 JSON を返す（502 にはならない想定）。
+   - **ANTHROPIC_API_KEY**: 誤字・欠け（先頭の `sk-ant-` など）がないか確認。無効・期限切れキーだと 401 になり、アプリは 401 JSON を返す（502 にはならない想定）。
    - **DATABASE_URL**: DB を使う場合は PostgreSQL を追加し、**Variables** で **DATABASE_URL** を参照またはコピーして設定する。未設定のまま DB に依存する処理を呼ぶとエラーになることがあるが、チャット単体では永続化以外は動く。
 
 4. **再デプロイ**
@@ -127,16 +127,16 @@
 
 1. **Settings** → **Networking** で **Generate Domain** を押し、公開 URL（例: `https://xxx.up.railway.app`）を発行する。
 2. その URL を開き、トップや `/negotiation` が表示されることを確認する。
-3. チャットや模擬商談でメッセージを送り、エラーにならず応答が返ってくれば、**OPENAI_API_KEY が正しく利用できています**。
-4. 「OPENAI_API_KEY not configured」や 503 が出る場合は、**Variables** で `OPENAI_API_KEY` のスペルと値（先頭の `sk-` が欠けていないか）を確認し、**Redeploy** する。
+3. チャットや模擬商談でメッセージを送り、エラーにならず応答が返ってくれば、**ANTHROPIC_API_KEY が正しく利用できています**。
+4. 「ANTHROPIC_API_KEY not configured」や 503 が出る場合は、**Variables** で `ANTHROPIC_API_KEY` のスペルと値（先頭の `sk-ant-` が欠けていないか）を確認し、**Redeploy** する。
 
 ---
 
-## まとめ：OPENAI_API_KEY を有効にする手順だけ
+## まとめ：ANTHROPIC_API_KEY を有効にする手順だけ
 
 1. Railway で **AI Agent のサービス** を開く。  
-2. **Variables** で **`OPENAI_API_KEY`** を追加し、OpenAI の API キー（`sk-...`）を貼り付ける。  
-3. 必要なら **`OPENAI_MODEL`** も追加（例: `gpt-4o-mini`）。  
+2. **Variables** で **`ANTHROPIC_API_KEY`** を追加し、Anthropic の API キー（`sk-ant-...`）を貼り付ける。  
+3. 必要なら **`ANTHROPIC_MODEL`** も追加（例: `claude-opus-5`）。  
 4. 保存後、必要に応じて **Redeploy** する。  
 
-これで Railway にデプロイした環境でも OPENAI_API_KEY が利用されます。
+これで Railway にデプロイした環境でも ANTHROPIC_API_KEY が利用されます。

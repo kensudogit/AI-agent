@@ -6,7 +6,7 @@ Next.js + TypeScript + React + PostgreSQL による、**音声会話・テキス
 
 - **Next.js 14** (App Router) + **TypeScript** + **React 18**
 - **PostgreSQL**（会話・メッセージの永続化）
-- **OpenAI API**（ストリーミング応答・ツール呼び出し）
+- **Anthropic API**（ストリーミング応答・ツール呼び出し）
 - ブラウザ **Web Speech API**（音声入力）
 
 ## 機能
@@ -42,7 +42,7 @@ copy .env.example .env
 
 必須:
 
-- `OPENAI_API_KEY` … OpenAI API キー
+- `ANTHROPIC_API_KEY` … Anthropic API キー
 - `DATABASE_URL` または `DB_*` … PostgreSQL 接続情報
 
 ### 3. データベースの初期化
@@ -70,7 +70,7 @@ PostgreSQL とアプリをまとめて起動します。
 ### 前提
 
 - Docker と Docker Compose がインストールされていること
-- `.env` に `OPENAI_API_KEY` を設定（チャット・模擬商談で利用）。`.env` がない場合は `copy .env.example .env` で作成してから編集する。Compose で「.env が無い」と出る場合は、空の `.env` を作成するか、`docker-compose.yml` の `env_file: - .env` を削除する。
+- `.env` に `ANTHROPIC_API_KEY` を設定（チャット・模擬商談で利用）。`.env` がない場合は `copy .env.example .env` で作成してから編集する。Compose で「.env が無い」と出る場合は、空の `.env` を作成するか、`docker-compose.yml` の `env_file: - .env` を削除する。
 
 ### 起動
 
@@ -96,7 +96,7 @@ docker compose down
 ## Railway にデプロイする（完全公開モード）
 
 **完全公開モード**（誰でも URL でアクセス可能）でデプロイする手順は **[RAILWAY_DEPLOY.md](./RAILWAY_DEPLOY.md)** を参照してください。  
-1) GitHub からデプロイ → 2) **Generate Domain** で公開 URL を発行 → 3) **OPENAI_API_KEY** を Variables に設定、で利用可能になります。
+1) GitHub からデプロイ → 2) **Generate Domain** で公開 URL を発行 → 3) **ANTHROPIC_API_KEY** を Variables に設定、で利用可能になります。
 
 ## 本番ビルド
 
@@ -108,11 +108,11 @@ npm start
 ## API 制限・運用
 
 - **ヘルスチェック**: `GET /api/health` で稼働状態を確認できます。  
-  - `openai`: OPENAI_API_KEY が設定されているか  
+  - `anthropic`: ANTHROPIC_API_KEY が設定されているか  
   - `db`: PostgreSQL に接続できるか  
   - `status` が `ok` で 200、未設定時は `degraded` で 503 を返します。
 - **リクエスト制限**: チャット・模擬商談のメッセージ数・1メッセージの文字数などは `src/lib/constants.ts` で定義し、Zod スキーマで検証しています。不正な body は 400 で拒否されます。
-- **DB 未設定時**: 会話一覧・履歴など DB を使う API は 503（Database unavailable）を返します。チャット・模擬商談の応答自体は OPENAI が有効なら利用可能です。
+- **DB 未設定時**: 会話一覧・履歴など DB を使う API は 503（Database unavailable）を返します。チャット・模擬商談の応答自体は ANTHROPIC_API_KEY が有効なら利用可能です。
 
 ## Docker 関連ファイル
 
@@ -141,7 +141,7 @@ src/
     tools.ts              # エージェント用ツール定義・実行
     negotiation.ts        # 模擬商談シナリオ・システムプロンプト定義
   app/api/
-    health/route.ts       # ヘルスチェック（OPENAI・DB 状態）
+    health/route.ts       # ヘルスチェック（Anthropic・DB 状態）
   types/
     agent.ts              # メッセージ・会話の型
 ```
