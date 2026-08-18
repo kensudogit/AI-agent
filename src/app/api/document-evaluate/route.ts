@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import OpenAI from 'openai';
+import type Anthropic from '@anthropic-ai/sdk';
 import {
   extractDocumentText,
   isAllowedDocumentName,
@@ -8,9 +8,8 @@ import {
   MAX_DOCUMENT_EXTRACT_CHARS,
   MAX_DOCUMENT_UPLOAD_BYTES,
 } from '@/lib/constants';
-import { apiError, openaiStatusToHttp } from '@/lib/api';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
+import { apiError } from '@/lib/api';
+import { CLAUDE_MODEL, getAnthropic, isAnthropicConfigured, toApiError } from '@/lib/anthropic';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -30,8 +29,8 @@ const SYSTEM_PROMPT = `あなたは文書レビューおよび評価の専門家
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return apiError('OPENAI_API_KEY not configured', 503);
+    if (!isAnthropicConfigured()) {
+      return apiError('ANTHROPIC_API_KEY not configured', 503);
     }
 
     let formData: FormData;
@@ -98,18 +97,20 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     try {
-      const completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPayload },
-        ],
-        max_tokens: 4_096,
-        temperature: 0.4,
+      // max_tokens は「思考 + 本文」の合計上限。長文レビューが途中で切れないよう確保する。
+      const completion = await getAnthropic().messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 16000,
+        system: SYSTEM_PROMPT,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'medium' },
+        messages: [{ role: 'user', content: userPayload }],
       });
 
       const evaluation =
-        completion.choices[0]?.message?.content?.trim() ||
+        completion.content
+          .find((b): b is Anthropic.TextBlock => b.type === 'text')
+          ?.text.trim() ||
         'モデルから評価テキストが返りませんでした。';
 
       return Response.json({
@@ -124,12 +125,8 @@ export async function POST(req: NextRequest) {
         },
       });
     } catch (apiErr: unknown) {
-      const status = (apiErr as { status?: number })?.status;
-      const code = openaiStatusToHttp(status);
-      return apiError(
-        apiErr instanceof Error ? apiErr.message : 'OpenAI API error',
-        code
-      );
+      const { message, status } = toApiError(apiErr);
+      return apiError(message, status);
     }
   } catch (err) {
     console.error('document-evaluate:', err);
