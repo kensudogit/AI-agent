@@ -1,19 +1,21 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { isNextProductionBuild } from '@/lib/next-build';
+import { CLAUDE_MODEL, isAnthropicConfigured } from '@/lib/anthropic';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type Health = {
   status: 'ok' | 'degraded';
-  openai: boolean;
+  anthropic: boolean;
+  model: string;
   db: boolean;
   timestamp: string;
 };
 
 export async function GET() {
-  const openai = Boolean(process.env.OPENAI_API_KEY);
+  const anthropic = isAnthropicConfigured();
   let db = false;
   if (!isNextProductionBuild()) {
     try {
@@ -24,10 +26,11 @@ export async function GET() {
     }
   }
 
-  const status: Health['status'] = openai ? 'ok' : 'degraded';
+  const status: Health['status'] = anthropic ? 'ok' : 'degraded';
   const body: Health = {
     status,
-    openai,
+    anthropic,
+    model: CLAUDE_MODEL,
     db,
     timestamp: new Date().toISOString(),
   };
