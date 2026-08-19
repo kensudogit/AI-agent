@@ -35,3 +35,6 @@ next-env.d.ts
 
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
+
+# docker compose の実行ログ
+compose-*.log

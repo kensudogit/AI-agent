@@ -76,7 +76,7 @@ PostgreSQL とアプリをまとめて起動します。
 
 ```bash
 cd C:\devlop\AI-agent
-docker compose up --build
+docker compose up -d --build
 ```
 
 - **本番アプリ（フロント＋API）**: http://localhost:3001
@@ -84,6 +84,23 @@ docker compose up --build
 - PostgreSQL: ホストの 5432（コンテナ内のみで使う場合は `docker-compose.yml` の `ports` を削除可）
 
 起動時にアプリ側で PostgreSQL の起動を待ち、`src/lib/schema.sql` でテーブルを自動作成します。`app` が本番用、`frontend` が開発用（コード変更が即反映）です。
+
+#### トラブルシュート: `use docker --context=desktop-linux buildx ...` で即終了する
+
+Cursor / 一部環境で `BUILDX_BUILDER=desktop-linux` が入っていると、Compose のビルドが **0.0s で失敗**します。同じシェルで次を実行してから再試行してください。
+
+```powershell
+Remove-Item Env:BUILDX_BUILDER -ErrorAction SilentlyContinue
+docker compose up -d --build
+```
+
+#### トラブルシュート: `exec ./scripts/docker-entrypoint.sh: no such file or directory`
+
+Windows の CRLF 改行が原因です。リポジトリの `.gitattributes` と Dockerfile の LF 正規化で対処済みです。古いイメージの場合は再ビルドしてください。
+
+```powershell
+docker compose up -d --build app
+```
 
 ### 停止
 

@@ -32,7 +32,9 @@ COPY --from=builder /app/scripts/docker-entrypoint.sh ./scripts/
 # entrypoint で DB 待ち・スキーマ初期化に pg が必要
 RUN npm install pg --omit=dev && chown -R nextjs:nodejs /app
 
-RUN chmod +x ./scripts/docker-entrypoint.sh
+# Windows チェックアウトの CRLF でも Alpine で実行できるよう LF に正規化
+RUN sed -i 's/\r$//' ./scripts/docker-entrypoint.sh \
+  && chmod +x ./scripts/docker-entrypoint.sh
 
 USER nextjs
 
