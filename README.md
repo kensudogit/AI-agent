@@ -1,5 +1,9 @@
 # AI Agent
 
+> **Real-time AI Agent** — 音声・テキスト会話、ストリーミング応答、ツール実行、会話永続化、模擬商談を備えたAIエージェントです。
+>
+> **Stack:** Next.js · React · TypeScript · PostgreSQL · Anthropic API · Web Speech API
+
 Next.js + TypeScript + React + PostgreSQL による、**音声会話・テキスト入力・アクション**ができるリアルタイム AI エージェントです。
 
 ## 技術スタック
